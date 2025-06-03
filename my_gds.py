@@ -18,6 +18,16 @@ def add_2x2MMI_1(
 ):
     '''
     添加一个可供结构化组成一个整体的MMI，其有四个接口，分别为o1,o2,o3,o4。左上、右上、右下、左下
+    o1 ──taper──┐           ┌──taper── o2
+               ║           ║
+               ║           ║
+             ┌─╫───────────╫─┐
+             │ ║    MMI    ║ │
+             │ ║   核心区   ║ │
+             └─╫───────────╫─┘
+               ║           ║
+               ║           ║
+    o4 ──taper──┘           └──taper── o3
     添加的版图默认为LAYER.WG层，默认为负胶版图。
     如需正胶版图，需要使用Region取轮廓
     core_length=87                     #多模区域长128um
@@ -97,6 +107,13 @@ def add_1x2MMI_1(
 ):
     '''
     添加一个1x2MMI,左侧只有一个端口，o1;右侧两个端口，上o2，下o3
+                        o2
+                        |
+                        |
+    o1 --------MMI----------
+                        |
+                        |
+                        o3
     :param core_length: 多模波导长度
     :param core_width: 多模波导宽度
     :param separation: taper间距
@@ -332,7 +349,20 @@ def add_ring_1(
 ):
     '''
     c<<add_ring_1
-    为c添加一个带上下两波导的微环，并携带四个端口，o1:左上；o2：右上；o3：右下；o4：左下
+    为c添加一个带上下两波导的微环，并携带四个端口，o1:左上；o2：右上；o3：右下；o4：左下。h1，h2为加热电极端口
+    o1 ────────────────────────────── o2
+               ┌─────────────┐
+              ╱               ╲
+             ╱                 ╲
+            ╱       微环        ╲
+           ╱        Ring        ╲
+          ╱         核心         ╲
+          ╲                     ╱
+           ╲                   ╱
+            ╲                 ╱
+             ╲_______________╱
+                h1       h2
+    o4 ────────────────────────────── o3
     默认层为LAYER.WG
     默认为负胶
     :param wg_width:
@@ -418,6 +448,14 @@ def add_ring_1(
 def add_loop_mirror_1(layer_wg=LAYER.WG, wg_width=1, multi_wg_width=4):
     '''
     添加一个loop_mirror
+    o1 ══════════════════════════════════════
+        ║                                ║
+    ┌─╫─┐    ╭─────────────────╮    ┌─╫─┐
+    │MMI│    ╱                 ╲    │MMI│
+    │ 1 │   ╱    Loop Mirror    ╲   │ 2 │
+    └─╫─┘   ╲     环形镜       ╱   └─╫─┘
+        ║      ╲_________________╱      ║
+    o2 ══════════════════════════════════════
     :param layer_wg:
     :param wg_width:
     :param multi_wg_width:
@@ -775,6 +813,20 @@ def add_bentDC(
 ) -> Component:
     '''
     添加定向耦合器
+    o1 ══════╗                        ╔══════ o3
+            ║╲                      ╱║
+            ║ ╲                    ╱ ║
+            ║  ╲ Bent Directional ╱  ║
+            ║   ╲   Coupler      ╱   ║
+            ║    ╲              ╱    ║
+            ║     ╲____________╱     ║
+            ║     ╱            ╲     ║
+            ║    ╱              ╲    ║
+            ║   ╱                ╲   ║
+            ║  ╱                  ╲  ║
+            ║ ╱                    ╲ ║
+            ║╱                      ╲║
+    o2 ══════╝                        ╚══════ o4
     :param waveguide_width:
     :param gap:
     :param angle:
@@ -1123,6 +1175,22 @@ def add_ring_2(
 ):
     '''
     添加一个euler弯曲的微环
+    o1 ──────────────────────────── o2
+            ┌─────────────────┐
+        ╱                   ╲
+        ╱     Rectangular     ╲
+        ╱        Ring with      ╲
+        ╱       Euler Bends      ╲
+    ╱                           ╲
+    ╱           Ring             ╲
+    ╱            Core              ╲
+    ╲                             ╱
+    ╲                           ╱
+    ╲                         ╱
+        ╲                       ╱
+        ╲                     ╱
+        ╲___________________╱
+    o4 ──────────────────────────── o3
     :param gap:
     :param length_x:
     :param length_y:

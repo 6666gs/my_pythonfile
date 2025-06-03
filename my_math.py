@@ -33,10 +33,9 @@ def efficient_db(x):
 
 def excel_read(file_dir, sheet='Sheet1'):
     '''
-
     :param file_dir: excel文件地址
     :param sheet: 选取的sheet，例如'Sheet1'
-    :return: 返回字典，键为每列标题
+    :return: 返回字典，键为每列标题，值为每列数据的列表。
     '''
     data = pd.read_excel(file_dir, sheet_name=sheet)
     df = pd.DataFrame(data)
@@ -49,18 +48,23 @@ def excel_read(file_dir, sheet='Sheet1'):
 
 def csv_read_to_array(file_dir):
     '''
-    读取csv格式的内容。注意，第一行为表头，因此转换为array时无法包括
-    :param file_dir:
+    :param file_dir: csv文件的路径。
     :return:
+        - df_array: 一个NumPy数组，包含csv文件中的数据，第一行表头除外，数据类型为float32。
     '''
-    df = pd.read_csv(file_dir, encoding="utf-8", header=0, names=['Wavelength (microns)', 'Effective Index'])
+    df = pd.read_csv(
+        file_dir,
+        encoding="utf-8",
+        header=0,
+        names=['Wavelength (microns)', 'Effective Index'],
+    )
     df_array = np.array(df)  # 将pandas读取的数据转化为array
     df_array = np.float32(df_array[1:, :])
     return df_array
 
+
 def find_3db(freorlam, power_spectrum, height=-20, distance=100):
     '''
-
     :param freorlam: 频率/Hz或波长/nm
     :param power_spectrum: 功率谱密度，单位为db
     :param height: 过滤峰值大小
@@ -70,7 +74,9 @@ def find_3db(freorlam, power_spectrum, height=-20, distance=100):
         - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
-    peaks_point, _ = find_peaks(power_spectrum, height=height, distance=distance)  # height参数可以根据实际情况调整
+    peaks_point, _ = find_peaks(
+        power_spectrum, height=height, distance=distance
+    )  # height参数可以根据实际情况调整
     freorlam = list(freorlam)
     # 计算每个峰值的3dB带宽
     all = []
@@ -78,7 +84,7 @@ def find_3db(freorlam, power_spectrum, height=-20, distance=100):
     bandwidths = []
     for peak in peaks_point:
         max_power = power_spectrum[peak]
-        half_power = max_power -3
+        half_power = max_power - 3
 
         # 找到功率下降到3dB以下的频率范围
         try:
@@ -100,7 +106,6 @@ def find_3db(freorlam, power_spectrum, height=-20, distance=100):
 
 def find_50(freorlam, power_spectrum, height=0.5, distance=100):
     '''
-
     :param freorlam: 频率/Hz或波长/nm
     :param power_spectrum: 功率谱密度，单位为幅度大小
     :param height: 过滤峰值大小
@@ -110,12 +115,14 @@ def find_50(freorlam, power_spectrum, height=0.5, distance=100):
         - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
-    peaks_point, _ = find_peaks(power_spectrum, height=height, distance=distance)  # height参数可以根据实际情况调整
+    peaks_point, _ = find_peaks(
+        power_spectrum, height=height, distance=distance
+    )  # height参数可以根据实际情况调整
     freorlam = list(freorlam)
     # 计算每个峰值的3dB带宽
     all = []
-    peaks=[]
-    bandwidths=[]
+    peaks = []
+    bandwidths = []
     for peak in peaks_point:
         max_power = power_spectrum[peak]
         half_power = max_power / 2
@@ -129,43 +136,16 @@ def find_50(freorlam, power_spectrum, height=0.5, distance=100):
             right_idx = np.min(np.where(power_spectrum[peak:] <= half_power)[0]) + peak
         except:
             right_idx = len(power_spectrum) - 1
-        
 
         bandwidth = freorlam[right_idx] - freorlam[left_idx]
         all.append((peak, freorlam[peak], bandwidth))
         peaks.append(peak)
         bandwidths.append(bandwidth)
 
-    return peaks,bandwidths,all
+    return peaks, bandwidths, all
 
 
-def find_3db_minus(freorlam, power_spectrum, height=-20, distance=100):
-    '''
-
-    :param freorlam:
-    :param power_spectrum:
-    :param height:
-    :param distance:
-    :return:
-    '''
-    # 找到所有峰值
-    peaks, _ = find_peaks(-power_spectrum, height=height, distance=distance)  # height参数可以根据实际情况调整
-    # 计算每个峰值的3dB带宽
-    bandwidths = []
-    for peak in peaks:
-        min_power = power_spectrum[peak]
-        half_power = min_power + 3
-
-        # 找到功率下降到3dB以下的频率范围
-        left_idx = np.max(np.where(power_spectrum[:peak] >= half_power)[0])
-        right_idx = np.min(np.where(power_spectrum[peak:] >= half_power)[0]) + peak
-
-        bandwidth = freorlam[right_idx] - freorlam[left_idx]
-        bandwidths.append((peak, freorlam[peak], bandwidth))
-
-    return bandwidths
-
-def read_csv_arrays(prefile,skiprows,readcoll):
+def read_csv_arrays(prefile, skiprows, readcoll):
     '''
     读取prefile目录中所有满足格式的文件
     格式要求：
@@ -178,7 +158,7 @@ def read_csv_arrays(prefile,skiprows,readcoll):
     :param prefile: 数据文件所在文件夹的绝对地址或相对地址，如
                         prefile = r'.\20250516LTdbr_ring'
                         或者
-                        prefile = r'E:\onedrive\Project\pycharm\processdata\DBR_RING\20250516LTdbr_ring'
+                        prefile = r'E:\\onedrive\\Project\\pycharm\\processdata\\DBR_RING\\20250516LTdbr_ring'
     :return:
             1、每读取一个文件，即返回读取成功信息
             2、返回所有读取内容
@@ -220,7 +200,7 @@ def read_csv_arrays(prefile,skiprows,readcoll):
                         skiprows=skiprows,
                         usecols=readcoll,
                         header=None,
-                        engine='python'  # 增强解析兼容性（网页5）
+                        engine='python',  # 增强解析兼容性（网页5）
                     )
                     data_dict[var_name] = df.to_numpy()
                     loaded_count += 1
@@ -232,19 +212,3 @@ def read_csv_arrays(prefile,skiprows,readcoll):
 
     print(f"\n总计导入 {loaded_count} 个文件")
     return data_dict
-
-
-
-
-'''data=excel_read('.\透镜表.xlsx')
-l=data['聚焦透镜后距离']
-print(l)
-
-x = db_efficient(-1)
-print(x)
-
-x=1000*math.cos(19.5/180*math.pi)+350*math.sin(19.5/180*math.pi)
-y=1000*math.sin(19.5/180*math.pi)+350*math.cos(19.5/180*math.pi)
-print(1.08/math.cos(19.5/180*math.pi))
-
-print(math.tan(0.8493218*24/math.pi)*0.07)'''
