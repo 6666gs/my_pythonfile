@@ -212,3 +212,36 @@ def read_csv_arrays(prefile, skiprows, readcoll):
 
     print(f"\n总计导入 {loaded_count} 个文件")
     return data_dict
+
+
+def plt_ready(n):
+    """预先设置好绘图环境
+
+    Args:
+        n (_type_): figure的子图数量
+    例如：n=4表示绘图时有4个子图
+
+    Returns:
+        - fig, axs: 返回绘图的figure和子图数组axs
+    """
+    # 全局字体设置
+    plt.rcParams.update(
+        {
+            'xtick.labelsize': 14,  # X轴刻度字体
+            'ytick.labelsize': 14,  # Y轴刻度字体
+            'axes.labelsize': 16,  # 坐标轴标签字体
+            'axes.titlesize': 18,  # 子图标题字体
+        }
+    )
+
+    # 创建绘图布局
+    cols = 2  # 每行显示2个子图
+    rows = (n + cols - 1) // cols
+    fig, axs = plt.subplots(rows, cols, figsize=(cols * 8, rows * 5))
+    axs = axs.ravel() if isinstance(axs, np.ndarray) else [axs]
+    # 隐藏空白子图
+    for j in range(n, len(axs)):
+        axs[j].axis('off')
+    for j in range(n):
+        axs[j].grid(True, alpha=0.3)
+    return fig, axs
