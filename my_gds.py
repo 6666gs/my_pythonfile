@@ -8,13 +8,13 @@ from gdsfactory.generic_tech import LAYER
 
 
 def add_2x2MMI_1(
-    core_length=87,
-    core_width=10.2,
-    separation=3.24,
-    taper_length=30,
-    taper_width=2.6,
-    end_width=1.17,
-    layer=LAYER.WG,
+    core_length: float = 87,
+    core_width: float = 10.2,
+    separation: float = 3.24,
+    taper_length: float = 30,
+    taper_width: float = 2.6,
+    end_width: float = 1.17,
+    layer: tuple = LAYER.WG,
 ):
     '''
     添加一个可供结构化组成一个整体的MMI，其有四个接口，分别为o1,o2,o3,o4。左上、右上、右下、左下
@@ -97,13 +97,13 @@ def add_2x2MMI_1(
 
 
 def add_1x2MMI_1(
-    core_length=23.6,
-    core_width=5.7,
-    separation=3,
-    taper_length=15,
-    taper_width=1.68,
-    end_width=1,
-    layer=LAYER.WG,
+    core_length: float = 23.6,
+    core_width: float = 5.7,
+    separation: float = 3,
+    taper_length: float = 15,
+    taper_width: float = 1.68,
+    end_width: float = 1,
+    layer: tuple = LAYER.WG,
 ):
     '''
     添加一个1x2MMI,左侧只有一个端口，o1;右侧两个端口，上o2，下o3
@@ -206,13 +206,13 @@ def add_wg_1(
 
 
 def add_gc_1(
-    boxh=15,
-    gratingp=0.94,
-    duty=0.725,
-    gcl=30,
-    taper_length=300,
-    wg_width=0.9,
-    layer=LAYER.WG,
+    boxh: float = 15,
+    gratingp: float = 0.94,
+    duty: float = 0.725,
+    gcl: int = 30,
+    taper_length: float = 300,
+    wg_width: float = 0.9,
+    layer: tuple = LAYER.WG,
 ):
     '''
     添加一个光栅耦合器，适合进行结构体装配，针对TE偏振
@@ -294,7 +294,7 @@ def add_gc_2(
     length_taper: float = 40,
     length_end: float = 50,
     wg_width: float = 0.9,
-    layer=LAYER.WG,
+    layer: tuple = LAYER.WG,
 ) -> gf.Component:
     '''
     添加一个偏振不敏感光栅耦合器
@@ -338,14 +338,14 @@ def add_gc_2(
 
 
 def add_ring_1(
-    wg_width=0.9,
-    gap=1.9,
-    L=453,
-    Lc=8,
-    straight_wg_length=80,
-    layer=LAYER.WG,
-    layer_heater=LAYER.HEATER,
-    h_width=8,
+    wg_width: float = 0.9,
+    gap: float = 1.9,
+    L: float = 453,
+    Lc: float = 8,
+    straight_wg_length: float = 80,
+    layer: tuple = LAYER.WG,
+    layer_heater: tuple = LAYER.HEATER,
+    h_width: float = 8,
 ):
     '''
     c<<add_ring_1
@@ -445,7 +445,9 @@ def add_ring_1(
     return s
 
 
-def add_loop_mirror_1(layer_wg=LAYER.WG, wg_width=1, multi_wg_width=4):
+def add_loop_mirror_1(
+    layer_wg: tuple = LAYER.WG, wg_width: float = 1, multi_wg_width: float = 4
+):
     '''
     添加一个loop_mirror
     o1 ══════════════════════════════════════
@@ -636,16 +638,16 @@ def add_loop_mirror_1(layer_wg=LAYER.WG, wg_width=1, multi_wg_width=4):
 
 
 def add_1x2MMItree(
-    core_length=23.6,
-    core_width=5.7,
-    separation=3,
-    taper_length=15,
-    taper_width=1.68,
-    layer=LAYER.WG,
-    num=5,
-    L_basaer=180,
-    W_basaer=60,
-    wg_width=1,
+    core_length: float = 23.6,
+    core_width: float = 5.7,
+    separation: float = 3,
+    taper_length: float = 15,
+    taper_width: float = 1.68,
+    layer: tuple = LAYER.WG,
+    num: int = 5,
+    L_basaer: float = 180,
+    W_basaer: float = 60,
+    wg_width: float = 1,
 ):
     '''
     添加一个MMI树，层数为num
@@ -735,8 +737,45 @@ def add_1x2MMItree(
 
 
 def add_multi_wg_tlet(
-    multi_wg_width, multi_wg_layer, multi_wg_length, et_layer, et_separation, et_width
+    multi_wg_width: float,
+    multi_wg_layer: tuple,
+    multi_wg_length: float,
+    et_layer: tuple,
+    et_separation: float,
+    et_width: tuple,
 ):
+    """创建一个带有GSG电极结构的多模波导器件
+
+    该函数生成一个电光调制器结构，包含一个多模波导和配套的GSG电极系统。
+    电极通过弯曲路径连接到波导中心，形成完整的调制器件。
+
+    Args:
+        multi_wg_width (float): 多模波导的宽度，单位为微米
+        multi_wg_layer (tuple): 多模波导所在的层，格式为(layer, datatype)
+        multi_wg_length (float): 多模波导的总长度，单位为微米
+        et_layer (tuple): 电极所在的层，格式为(layer, datatype)
+        et_separation (float): 相邻电极之间的间距，单位为微米
+        et_width (tuple): 三个电极的宽度，格式为(上电极宽度, 中心电极宽度, 下电极宽度)
+
+    Returns:
+        gf.Component: 包含多模波导和T型电极结构的GDSFactory组件对象，
+                     具有端口'o1'和'o2'用于光学连接
+
+    Structure:
+        电极弯曲部分 ─┐        ┌─ 电极弯曲部分
+                    │        │
+                    │  多模  │
+        o1 ─────────┼─波导───┼────────── o2
+                    │        │
+                    └────────┘
+                 et_middle (中心连接点)
+
+    Note:
+        - 电极弯曲半径固定为217μm
+        - 电极直通段长度为 multi_wg_length - 350
+        - 中心电极通过'et_middle'端口与波导中心连接
+        - 适用于电光调制器、相位调制器等应用场景
+    """
     c1 = gf.Component()
     # 添加多模波导
     wg1 = c1 << add_wg_1(
@@ -1100,7 +1139,12 @@ def add_bentDC(
     return dc
 
 
-def connect_ports_with_parallelogram(port1, port2, layer=LAYER.SOURCE):
+import kfactory as kf
+
+
+def connect_ports_with_parallelogram(
+    port1: kf.Port, port2: kf.Port, layer: tuple = LAYER.SOURCE
+):
     '''
     自动生成平行四边形连接两个同宽度端口
     :param port1: Ports类型
