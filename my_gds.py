@@ -16,28 +16,46 @@ def add_2x2MMI_1(
     end_width: float = 1.17,
     layer: tuple = LAYER.WG,
 ):
-    '''
-    添加一个可供结构化组成一个整体的MMI，其有四个接口，分别为o1,o2,o3,o4。左上、右上、右下、左下
-    o1 ──taper──┐           ┌──taper── o2
-               ║           ║
-               ║           ║
-             ┌─╫───────────╫─┐
-             │ ║    MMI    ║ │
-             │ ║   核心区   ║ │
-             └─╫───────────╫─┘
-               ║           ║
-               ║           ║
-    o4 ──taper──┘           └──taper── o3
-    添加的版图默认为LAYER.WG层，默认为负胶版图。
-    如需正胶版图，需要使用Region取轮廓
-    core_length=87                     #多模区域长128um
-    core_width=9.8                      #多模区域宽12um
-    separation=3.4                      #taper间距
-    taper_length=30                     #taper长度
-    taper_width=1.8                     #taper宽度
-    wg_width=1.1                        #单模波导宽度
-    :return: c
-    '''
+    """创建一个2x2多模干涉器(MMI)器件
+
+    该函数生成一个标准的2x2 MMI分光器/合光器结构，包含矩形多模区域和四个渐变器(taper)。
+    MMI器件可用于光信号的分光、合光或功分功能。
+
+    Args:
+        core_length (float, optional): MMI核心区域的长度，单位为微米。默认值为87μm。
+        core_width (float, optional): MMI核心区域的宽度，单位为微米。默认值为10.2μm。
+        separation (float, optional): 输入/输出端口之间的中心间距，单位为微米。默认值为3.24μm。
+        taper_length (float, optional): 渐变器(taper)的长度，单位为微米。默认值为30μm。
+        taper_width (float, optional): 连接MMI核心区的taper宽端宽度，单位为微米。默认值为2.6μm。
+        end_width (float, optional): 端口处的波导宽度(taper窄端)，单位为微米。默认值为1.17μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+
+    Returns:
+        gf.Component: 包含2x2 MMI结构的GDSFactory组件对象，具有四个光学端口：
+                     - 'o1': 左上端口
+                     - 'o2': 右上端口
+                     - 'o3': 右下端口
+                     - 'o4': 左下端口
+
+    Structure:
+        o1 ──taper──┐           ┌──taper── o2
+                   ║           ║
+                   ║           ║
+                 ┌─╫───────────╫─┐
+                 │ ║    MMI    ║ │
+                 │ ║   核心区   ║ │
+                 └─╫───────────╫─┘
+                   ║           ║
+                   ║           ║
+        o4 ──taper──┘           └──taper── o3
+
+    Note:
+        - 默认生成负胶版图(LAYER.WG层)
+        - 如需正胶版图，需要使用Region取轮廓
+        - MMI核心区为矩形结构，通过渐变器连接单模波导
+        - 端口orientation设置：左侧端口为180°，右侧端口为0°
+        - 适用于1550nm波长的硅光子平台
+    """
     c = gf.Component()
 
     c.add_polygon(
@@ -105,8 +123,28 @@ def add_1x2MMI_1(
     end_width: float = 1,
     layer: tuple = LAYER.WG,
 ):
-    '''
-    添加一个1x2MMI,左侧只有一个端口，o1;右侧两个端口，上o2，下o3
+    """
+    创建一个1x2多模干涉器(MMI)器件
+
+    该函数生成一个标准的1x2 MMI分光器结构，包含矩形多模区域和三个渐变器(taper)。
+    器件左侧有一个输入端口，右侧有两个输出端口，用于将单路光信号分成两路。
+
+    Args:
+        core_length (float, optional): MMI核心区域的长度，单位为微米。默认值为23.6μm。
+        core_width (float, optional): MMI核心区域的宽度，单位为微米。默认值为5.7μm。
+        separation (float, optional): 输出端口之间的中心间距，单位为微米。默认值为3μm。
+        taper_length (float, optional): 渐变器(taper)的长度，单位为微米。默认值为15μm。
+        taper_width (float, optional): 连接MMI核心区的taper宽端宽度，单位为微米。默认值为1.68μm。
+        end_width (float, optional): 端口处的波导宽度(taper窄端)，单位为微米。默认值为1μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+
+    Returns:
+        gf.Component: 包含1x2 MMI结构的GDSFactory组件对象，具有三个光学端口：
+                     - 'o1': 左侧输入端口
+                     - 'o2': 右上输出端口
+                     - 'o3': 右下输出端口
+
+    Structure:
                         o2
                         |
                         |
@@ -114,15 +152,15 @@ def add_1x2MMI_1(
                         |
                         |
                         o3
-    :param core_length: 多模波导长度
-    :param core_width: 多模波导宽度
-    :param separation: taper间距
-    :param taper_length: taper长度
-    :param taper_width: taper宽度
-    :param end_width: taper末端宽度
-    :param layer: 层
-    :return:
-    '''
+
+    Note:
+        - 默认生成负胶版图(LAYER.WG层)
+        - MMI核心区为矩形结构，通过渐变器连接单模波导
+        - 输入端口orientation为180°，输出端口orientation为0°
+        - 输入端口位于核心区中心高度，输出端口按separation间距分布
+        - 适用于1550nm波长的硅光子平台的功分器应用
+
+    """
     c = gf.Component()
     c.add_polygon(
         [
@@ -215,18 +253,6 @@ def add_gc_1(
     layer: tuple = LAYER.WG,
 ):
     '''
-    添加一个光栅耦合器，适合进行结构体装配，针对TE偏振
-    为光栅耦合器添加port，名字为o1
-    默认层为LAYER.WG
-    默认为负胶
-    :param boxh:
-    :param gratingp:
-    :param duty:
-    :param gcl:
-    :param taper_length:
-    :param wg_width:
-    :return:
-
     nclad=1
     fiberradius=5.2
     fiberangle=8
@@ -239,6 +265,46 @@ def add_gc_1(
     gcl=28              #齿数
     taper_length=300     #taper长度
     wg_width=0.9
+
+    创建一个TE偏振光栅耦合器(Grating Coupler)
+
+    该函数生成一个用于光纤-芯片耦合的光栅耦合器结构，包含一个线性渐变器和周期性光栅齿结构。
+    适用于TE偏振光的垂直耦合，是硅光子芯片与光纤连接的标准器件。
+
+    Args:
+        boxh (float, optional): 光栅齿的长度(高度)，单位为微米。默认值为15μm。
+        gratingp (float, optional): 光栅周期，单位为微米。默认值为0.94μm。
+        duty (float, optional): 光栅占空比，即刻蚀区域占周期的比例。默认值为0.725。
+        gcl (int, optional): 光栅齿的数量。默认值为30个齿。
+        taper_length (float, optional): 线性渐变器的长度，单位为微米。默认值为300μm。
+        wg_width (float, optional): 连接波导的宽度，单位为微米。默认值为0.9μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+
+    Returns:
+        gf.Component: 包含光栅耦合器结构的GDSFactory组件对象，具有一个光学端口：
+                     - 'o1': 波导连接端口(左侧)
+
+    Structure:
+        光纤耦合区域        渐变器              波导连接
+        ║║║║║║║║║║ ◄────────────── o1
+        ┴┴┴┴┴┴┴┴┴┴
+        光栅齿结构    线性taper     单模波导
+
+    Parameters Detail:
+        - boxh: 光栅齿长度，影响耦合效率和角度容忍度
+        - gratingp: 光栅周期，决定布拉格波长和耦合角度
+        - duty: 占空比，影响耦合强度和带宽
+        - gcl: 齿数，影响耦合效率和反射
+        - taper_length: 渐变器长度，影响模式转换效率
+        - wg_width: 输出波导宽度，需匹配后续器件
+
+    Note:
+        - 默认生成负胶版图(LAYER.WG层)
+        - 优化参数适用于1550nm波长TE偏振光
+        - 光栅周期0.94μm对应约8°的光纤角度
+        - 占空比0.725提供良好的耦合效率
+        - 端口orientation为180°，适合从左侧连接波导
+
     '''
 
     gc = gf.Component()
@@ -297,16 +363,41 @@ def add_gc_2(
     layer: tuple = LAYER.WG,
 ) -> gf.Component:
     '''
-    添加一个偏振不敏感光栅耦合器
-    :param period:
-    :param n:
-    :param duty_ratio:
-    :param angle:
-    :param length_taper:
-    :param length_end:
-    :param wg_width:
-    :param layer:
-    :return:
+    创建一个偏振不敏感弧形光栅耦合器
+
+    该函数生成一个弧形光栅耦合器结构，具有多个周期性光栅齿排列在弧形路径上，
+    适用于偏振不敏感的光纤-芯片耦合应用。
+
+    Args:
+        period (float, optional): 光栅周期，单位为微米。默认值为1μm。
+        n (int, optional): 光栅齿的数量。默认值为20个齿。
+        duty_ratio (float, optional): 光栅占空比，刻蚀区域占周期的比例。默认值为0.5。
+        angle (float, optional): 弧形光栅的张角，单位为度。默认值为10°。
+        length_taper (float, optional): 弧形区域的半径长度，单位为微米。默认值为40μm。
+        length_end (float, optional): 连接波导的长度，单位为微米。默认值为50μm。
+        wg_width (float, optional): 输出波导的宽度，单位为微米。默认值为0.9μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+
+    Returns:
+        gf.Component: 包含弧形光栅耦合器结构的GDSFactory组件对象，具有一个光学端口：
+                     - 'o1': 波导连接端口
+
+    Parameters Detail:
+        - period: 光栅周期，影响工作波长和耦合效率
+        - n: 光栅齿数，影响带宽和反射特性
+        - duty_ratio: 占空比，影响耦合强度
+        - angle: 弧形张角，影响模场匹配和偏振特性
+        - length_taper: 弧形半径，决定器件尺寸
+        - length_end: 连接段长度，便于与其他器件连接
+        - wg_width: 输出波导宽度，需匹配后续器件
+
+    Note:
+        - 弧形设计提供更好的偏振不敏感特性
+        - 通过多个Section构建复杂的光栅齿结构
+        - 使用弧形路径(gf.path.arc)创建弯曲光栅
+        - 端口orientation为0°，适合从右侧连接波导
+        - 适用于需要偏振不敏感耦合的应用场景
+
     '''
     c = gf.Component()
     secs_teeth = []
@@ -348,30 +439,60 @@ def add_ring_1(
     h_width: float = 8,
 ):
     '''
-    c<<add_ring_1
-    为c添加一个带上下两波导的微环，并携带四个端口，o1:左上；o2：右上；o3：右下；o4：左下。h1，h2为加热电极端口
-    o1 ────────────────────────────── o2
-               ┌─────────────┐
-              ╱               ╲
-             ╱                 ╲
-            ╱       微环        ╲
-           ╱        Ring        ╲
-          ╱         核心         ╲
-          ╲                     ╱
-           ╲                   ╱
-            ╲                 ╱
-             ╲_______________╱
-                h1       h2
-    o4 ────────────────────────────── o3
-    默认层为LAYER.WG
-    默认为负胶
-    :param wg_width:
-    :param gap:
-    :param L:
-    :param Lc:
-    :param straight_wg_length:
-    :param h_width:
-    :return:
+    创建一个带上下直波导的微环谐振器
+
+    该函数生成一个标准的微环谐振器结构，包含一个环形谐振腔和上下两条直波导。
+    微环由两段直波导和两个180°圆弧组成，支持热光调谐功能。
+
+    Args:
+        wg_width (float, optional): 波导宽度(包括直波导和环形波导)，单位为微米。默认值为0.9μm。
+        gap (float, optional): 直波导与微环的耦合间距(中心到中心距离)，单位为微米。默认值为1.9μm。
+        L (float, optional): 微环的总周长，单位为微米。默认值为453μm。
+        Lc (float, optional): 微环耦合区的直波导长度，单位为微米。默认值为8μm。
+        straight_wg_length (float, optional): 上下直波导的长度，单位为微米。默认值为80μm。
+        layer (tuple, optional): 波导所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+        layer_heater (tuple, optional): 加热电极所在的工艺层，格式为(layer, datatype)。默认为LAYER.HEATER。
+        h_width (float, optional): 加热电极的宽度，单位为微米。默认值为8μm。
+
+    Returns:
+        gf.Component: 包含微环谐振器结构的GDSFactory组件对象，具有六个端口：
+                     - 'o1': 左上波导端口
+                     - 'o2': 右上波导端口
+                     - 'o3': 右下波导端口
+                     - 'o4': 左下波导端口
+                     - 'h1': 左侧加热电极端口
+                     - 'h2': 右侧加热电极端口
+
+    Structure:
+        o1 ────────────────────────────── o2
+                   ┌─────────────┐
+                  ╱               ╲
+                 ╱                 ╲
+                ╱       微环        ╲
+               ╱        Ring        ╲
+              ╱         核心         ╲
+              ╲                     ╱
+               ╲                   ╱
+                ╲                 ╱
+                 ╲_______________╱
+                    h1       h2
+        o4 ────────────────────────────── o3
+
+    Parameters Detail:
+        - wg_width: 影响传输损耗和模式特性
+        - gap: 控制耦合强度，决定器件的品质因子和自由频谱范围
+        - L: 决定谐振波长和自由频谱范围
+        - Lc: 影响耦合区域的耦合系数
+        - straight_wg_length: 便于与其他器件连接
+        - h_width: 加热电极宽度，影响热调谐效率
+
+    Note:
+        - 微环半径自动计算：R = (L - 2*Lc) / (2*π)
+        - 微环由两段直波导(长度Lc)和两个180°圆弧组成
+        - 加热电极位于微环左右两侧的弯曲中心
+        - 端口orientation: 左侧为180°，右侧为0°
+        - 适用于滤波器、开关、调制器等应用
+
 
     wg_width=0.9                            #波导宽度，包括了直波导和弯曲波导
     gap=0.9                                 #直波导和微环的耦合间距,指中心波导间距
@@ -650,18 +771,49 @@ def add_1x2MMItree(
     wg_width: float = 1,
 ):
     '''
-    添加一个MMI树，层数为num
-    :param core_length:MMI
-    :param core_width:
-    :param separation:
-    :param taper_length:
-    :param taper_width:
-    :param layer:以上全部为MMI的参数
-    :param num:MMI树的层数
-    :param L_basaer:贝塞尔曲线的横向长度
-    :param W_basaer:贝塞尔曲线的宽度
-    :param wg_width:单模波导的宽度，顶宽
-    :return:
+
+    创建一个1x2 MMI分光器树状网络
+
+    该函数生成一个多级1x2 MMI分光器的树状结构，通过级联多个1x2 MMI分光器
+    和贝塞尔曲线连接，形成1对多输出的分光网络。每个输出端都连接光栅耦合器。
+
+    Args:
+        core_length (float, optional): 每个MMI核心区域的长度，单位为微米。默认值为23.6μm。
+        core_width (float, optional): 每个MMI核心区域的宽度，单位为微米。默认值为5.7μm。
+        separation (float, optional): MMI输出端口之间的中心间距，单位为微米。默认值为3μm。
+        taper_length (float, optional): 每个MMI渐变器的长度，单位为微米。默认值为15μm。
+        taper_width (float, optional): MMI连接处的taper宽度，单位为微米。默认值为1.68μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+        num (int, optional): MMI分光器的级联层数。默认值为5级。
+        L_basaer (float, optional): 贝塞尔曲线的水平长度，单位为微米。默认值为180μm。
+        W_basaer (float, optional): 贝塞尔曲线的垂直偏移，单位为微米。默认值为60μm。
+        wg_width (float, optional): 连接波导的宽度，单位为微米。默认值为1μm。
+
+    Returns:
+        None: 函数直接显示生成的器件，不返回组件对象
+
+    Structure:
+        GC ── MMI1 ──┬── Bezier ── MMI2 ──┬── Bezier ── MMI3 ──┬── GC
+                     │                    │                    │
+                     └── Bezier ── GC     └── Bezier ── GC     └── GC
+
+        输入: 1个光栅耦合器
+        输出: 2^num 个光栅耦合器 (级联num级MMI)
+
+    Parameters Detail:
+        - core_length/core_width: 控制每个MMI的尺寸和分光比
+        - separation: 影响MMI输出端口间距
+        - num: 决定最终输出端口数量 (2^num个输出)
+        - L_basaer/W_basaer: 控制级间连接的贝塞尔曲线形状
+        - wg_width: 统一的波导连接宽度
+
+    Note:
+        - 每级MMI都使用相同的几何参数
+        - 贝塞尔曲线提供平滑的级间连接，减少损耗
+        - 自动在每个输出端添加光栅耦合器用于测试
+        - 函数末尾调用c1.show()直接显示器件
+        - 适用于1对多功分器、阵列波导光栅前端等应用
+
     '''
 
     c1 = gf.Component()
@@ -851,29 +1003,59 @@ def add_bentDC(
     # waveguide_gap: float | None = None,#上下波导间距
 ) -> Component:
     '''
-    添加定向耦合器
-    o1 ══════╗                        ╔══════ o3
-            ║╲                      ╱║
-            ║ ╲                    ╱ ║
-            ║  ╲ Bent Directional ╱  ║
-            ║   ╲   Coupler      ╱   ║
-            ║    ╲              ╱    ║
-            ║     ╲____________╱     ║
-            ║     ╱            ╲     ║
-            ║    ╱              ╲    ║
-            ║   ╱                ╲   ║
-            ║  ╱                  ╲  ║
-            ║ ╱                    ╲ ║
-            ║╱                      ╲║
-    o2 ══════╝                        ╚══════ o4
-    :param waveguide_width:
-    :param gap:
-    :param angle:
-    :param radius1:
-    :param x_position:
-    :param y_position:
-    :param dwidth:
-    :return:
+    创建一个弯曲定向耦合器(Bent Directional Coupler)
+
+    该函数生成一个弯曲型定向耦合器结构，由两对贝塞尔曲线组成，提供光功率分配和耦合功能。
+    器件采用弯曲设计，可实现紧凑的布局和可调的耦合长度。
+
+    Args:
+        waveguide_width (float): 波导宽度，单位为微米
+        gap (float): 定向耦合器间距，指波导中心到中心的距离，单位为微米
+        angle (float): 弯曲角度，单位为度
+        radius1 (float): 上臂弯曲半径，单位为微米
+        x_position (float): 器件在x方向的位置偏移，单位为微米
+        y_position (float): 器件在y方向的位置偏移，单位为微米
+        layer_wg (tuple): 波导所在的工艺层，格式为(layer, datatype)
+
+    Returns:
+        Component: 包含弯曲定向耦合器结构的GDSFactory组件对象，具有四个光学端口：
+                  - 'o1': 左上输入端口
+                  - 'o2': 左下输入端口
+                  - 'o3': 右上输出端口
+                  - 'o4': 右下输出端口
+
+    Structure:
+        o1 ══════╗                        ╔══════ o3
+                ║╲                      ╱║
+                ║ ╲                    ╱ ║
+                ║  ╲ Bent Directional ╱  ║
+                ║   ╲   Coupler      ╱   ║
+                ║    ╲              ╱    ║
+                ║     ╲____________╱     ║
+                ║     ╱            ╲     ║
+                ║    ╱              ╲    ║
+                ║   ╱                ╲   ║
+                ║  ╱                  ╲  ║
+                ║ ╱                    ╲ ║
+                ║╱                      ╲║
+        o2 ══════╝                        ╚══════ o4
+
+    Parameters Detail:
+        - waveguide_width: 影响单模传输特性和耦合效率
+        - gap: 控制耦合强度，决定功率分配比
+        - angle: 影响器件的紧凑性和弯曲损耗
+        - radius1: 上臂半径，影响上臂的弯曲特性
+        - x_position/y_position: 器件的全局位置偏移
+        - layer_wg: 定义器件的制造层
+
+    Note:
+        - 使用贝塞尔曲线实现平滑的弯曲过渡
+        - 自动计算下臂半径：radius2 = radius1 + gap
+        - 自动补偿上下臂的长度差，确保相位匹配
+        - 固定的内部角度参数：m = π/6 (30°)
+        - 适用于功分器、合路器、光开关等应用
+        - @gf.cell装饰器支持器件缓存和复用
+
     '''
     D = Component()
     dc = gf.Component()
@@ -1218,32 +1400,60 @@ def add_ring_2(
     layer_wg: tuple = (1, 0),
 ):
     '''
-    添加一个euler弯曲的微环
-    o1 ──────────────────────────── o2
-            ┌─────────────────┐
-        ╱                   ╲
-        ╱     Rectangular     ╲
-        ╱        Ring with      ╲
-        ╱       Euler Bends      ╲
-    ╱                           ╲
-    ╱           Ring             ╲
-    ╱            Core              ╲
-    ╲                             ╱
-    ╲                           ╱
-    ╲                         ╱
-        ╲                       ╱
-        ╲                     ╱
-        ╲___________________╱
-    o4 ──────────────────────────── o3
-    :param gap:
-    :param length_x:
-    :param length_y:
-    :param straight_wg_length:
-    :param p:
-    :param radius:
-    :param wg_width:
-    :param layer_wg:
-    :return:
+    创建一个带Euler弯曲的矩形微环谐振器
+
+    该函数生成一个采用Euler弯曲的矩形微环谐振器结构，包含一个矩形环形谐振腔和左右两条直波导。
+    微环采用Euler弯曲替代传统圆弧，减少弯曲损耗，提供更好的传输特性。
+
+    Args:
+        gap (float, optional): 直波导与微环的耦合间距，单位为微米。默认值为1.6μm。
+        length_x (float, optional): 微环矩形的短边长度，单位为微米。默认值为10μm。
+        length_y (float, optional): 微环矩形的长边长度，单位为微米。默认值为1000μm。
+        straight_wg_length (float, optional): 左右直波导的长度，单位为微米。默认值为100μm。
+        p (float, optional): Euler弯曲的p参数，控制弯曲形状。默认值为0.2。
+        radius (float, optional): Euler弯曲的半径，单位为微米。默认值为150μm。
+        wg_width (float, optional): 波导宽度，单位为微米。默认值为1μm。
+        layer_wg (tuple, optional): 波导所在的工艺层，格式为(layer, datatype)。默认值为(1, 0)。
+
+    Returns:
+        gf.Component: 包含矩形微环谐振器结构的GDSFactory组件对象，具有四个光学端口：
+                     - 'o1': 左上直波导端口
+                     - 'o2': 左下直波导端口
+                     - 'o3': 右上直波导端口
+                     - 'o4': 右下直波导端口
+
+    Structure:
+        o1 ──────────────────────────── o2
+                ┌─────────────────┐
+            ╱                   ╲
+            ╱     Rectangular     ╲
+            ╱        Ring with      ╲
+            ╱       Euler Bends      ╲
+        ╱                           ╲
+        ╱           Ring             ╲
+        ╱            Core              ╲
+        ╲                             ╱
+        ╲                           ╱
+        ╲                         ╱
+            ╲                       ╱
+            ╲                     ╱
+            ╲___________________╱
+        o4 ──────────────────────────── o3
+
+    Parameters Detail:
+        - gap: 控制耦合强度，影响品质因子和耦合效率
+        - length_x/length_y: 决定微环尺寸和谐振波长
+        - p: Euler弯曲参数，影响弯曲损耗和模式匹配
+        - radius: 弯曲半径，影响器件占用空间和传输特性
+        - straight_wg_length: 便于与其他器件连接
+
+    Note:
+        - 使用四个90°Euler弯曲构成矩形微环
+        - Euler弯曲提供更低的弯曲损耗
+        - 自动计算并输出微环周长
+        - 支持高精度路径描述(npoints=5000)
+        - 适用于滤波器、延迟线、光学缓存等应用
+
     '''
 
     c = gf.Component()
@@ -1285,4 +1495,73 @@ def add_ring_2(
     c1.add_port("o2", port=path1_1_ref.ports["o2"])
     c1.add_port("o3", port=path2_1_ref.ports["o1"])
     c1.add_port("o4", port=path2_1_ref.ports["o2"])
+    return c1
+
+
+def add_circle_dbr(
+    N: int = 6000,
+    circle_gap: float = 1.5,
+    circle_D: float = 0.5,
+    circle_period: float = 1.3,
+    wg_width: float = 1,
+    layer_wg: tuple = (1, 0),
+):
+    '''
+    创建一个圆柱形分布式布拉格反射器(DBR)
+
+    该函数生成一个圆柱形DBR结构，通过在直波导两侧周期性排列圆形散射体，
+    形成一维光子晶体结构，可用于激光器反射镜、滤波器等应用。
+
+    Args:
+        N (int, optional): DBR周期数(圆形散射体对数)。默认值为6000。
+        circle_gap (float, optional): 圆形散射体中心到波导中心的间距，单位为微米。默认值为0.5μm。
+        circle_D (float, optional): 圆形散射体的直径，单位为微米。默认值为0.5μm。
+        circle_period (float, optional): DBR的周期长度，单位为微米。默认值为1.3μm。
+        wg_width (float, optional): 中心波导的宽度，单位为微米。默认值为1μm。
+        layer_wg (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认值为(1, 0)。
+
+    Returns:
+        gf.Component: 包含圆柱形DBR结构的GDSFactory组件对象，具有两个光学端口：
+                     - 'o1': 左侧波导端口
+                     - 'o2': 右侧波导端口
+
+    Structure:
+        o1 ─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─○─ o2
+           │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │ │
+           ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○
+
+        上下对称排列的圆形散射体，形成周期性结构
+
+    Parameters Detail:
+        - N: 决定DBR的反射带宽和反射率强度
+        - circle_gap: 控制耦合强度和工作波长
+        - circle_D: 影响散射强度和带隙特性
+        - circle_period: 决定布拉格波长 λ = 2*n_eff*Λ
+        - wg_width: 影响模式特性和传输损耗
+        - layer_wg: 定义制造工艺层
+
+    Note:
+        - 总DBR长度：L = N × circle_period
+        - 波导总长度：dbr_wg_L = L + 40μm (包含20μm缓冲区)
+        - 圆形散射体成对出现在波导上下两侧
+        - 散射体中心位置：y = ±circle_gap
+        - 适用于激光器、高Q谐振器、窄带滤波器等应用
+
+    '''
+
+    c1 = gf.Component()
+    L = N * circle_period
+    dbr_wg_L = L + 40
+    dbr_wg = c1 << add_wg_1(wg_width=wg_width, layer=layer_wg, wg_length=dbr_wg_L)
+    circle = gf.components.circle(
+        radius=circle_D / 2, angle_resolution=1, layer=layer_wg
+    )
+    for i in range(N):
+        x = (dbr_wg_L - L) / 2 + (i - 1) * circle_period
+        circle_1 = c1.add_ref(circle)
+        circle_1.dmove((x, circle_gap))
+        circle_1 = c1.add_ref(circle)
+        circle_1.dmove((x, -(circle_gap)))
+    c1.add_port('o1', port=dbr_wg.ports['o1'])
+    c1.add_port('o2', port=dbr_wg.ports['o2'])
     return c1
