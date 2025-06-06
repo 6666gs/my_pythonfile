@@ -245,3 +245,57 @@ def plt_ready(n):
     for j in range(n):
         axs[j].grid(True, alpha=0.3)
     return fig, axs
+
+
+def select_file_gui():
+    """弹出图形界面选择文件并返回文件路径
+
+    该函数使用tkinter库弹出一个简单的文件选择窗口，允许用户通过图形界面选择任意文件（支持所有文件、txt、csv、dat等类型）。
+    选择后窗口自动关闭，并返回所选文件的完整路径字符串。如果未选择文件则返回空字符串。
+
+    Returns:
+        str: 用户选择的文件路径（字符串），若未选择则返回空字符串。
+
+    Example:
+        ```python
+        file_path = select_file_gui()
+        if file_path:
+            print(f"已选择文件: {file_path}")
+        else:
+            print("未选择文件")
+        ```
+    """
+    import tkinter as tk
+    from tkinter import filedialog
+
+    file1name = ""
+
+    def select_file():
+        file_path = filedialog.askopenfilename(
+            title="选择文件",
+            filetypes=[
+                ("所有文件", "*.*"),
+                ("文本文件", "*.txt"),
+                ("CSV文件", "*.csv"),
+                ("数据文件", "*.dat"),
+            ],
+        )
+        if file_path:
+            nonlocal file1name
+            file1name = file_path
+            label.config(text=f"已选择文件：{file1name}")
+            root.quit()  # 选中后关闭窗口
+
+    root = tk.Tk()
+    root.title("文件选择示例")
+    root.geometry("400x150")
+
+    button = tk.Button(root, text="选择文件", command=select_file)
+    button.pack(pady=20)
+
+    label = tk.Label(root, text="未选择文件")
+    label.pack()
+
+    root.mainloop()
+    root.destroy()
+    return file1name
