@@ -214,7 +214,7 @@ def read_csv_arrays(prefile, skiprows, readcoll):
     return data_dict
 
 
-def plt_ready(n):
+def plt_ready(n: int = 1, cols: int = 2):
     """预先设置好绘图环境
 
     Args:
@@ -235,7 +235,7 @@ def plt_ready(n):
     )
 
     # 创建绘图布局
-    cols = 2  # 每行显示2个子图
+    # cols = 2  # 每行显示2个子图
     rows = (n + cols - 1) // cols
     fig, axs = plt.subplots(rows, cols, figsize=(cols * 8, rows * 5))
     axs = axs.ravel() if isinstance(axs, np.ndarray) else [axs]
@@ -299,3 +299,66 @@ def select_file_gui():
     root.mainloop()
     root.destroy()
     return file1name
+
+
+def ring_T_D(
+    L_1: float = 3500e-6,
+    l_eo_1: float = 0,
+    l_eo_2: float = 0,
+    delta_n_eo_1: float = 0,
+    delta_n_eo_2: float = 0,
+    tau_1: float = 0.8,
+    tau_2: float = 0.8,
+    sigma: float = 0,
+    lamda1: np.ndarray = np.array([]),
+    n_e1: np.ndarray = np.array([]),
+):
+    '''
+    添加一个微环
+    :param L_1: 周长
+    :param delta_n_eo_1: 正对着入射光的电光折射率改变量
+    :param delta_n_eo_2:
+    :param tau_1: 直通系数，默认上耦合和下耦合相同
+    :return:
+        - T_1:直通端电场
+        - D_1:下载端电场
+    '''
+
+    # tau_array_1 = np.ones(len(lamda1)) * tau_1
+    # tau_array_2 = np.ones(len(lamda1)) * tau_2
+    kai_1 = (1 - tau_1**2) ** 0.5
+    kai_2 = (1 - tau_2**2) ** 0.5
+
+    # l_eo_1 = L_1 / 2  # 与入射光正对的半环，设置此时两边加电电压不同
+    # l_eo_2 = L_1 / 2
+    # delta_n_eo_1 = 0
+    # delta_n_eo_2 = delta_n_eo_1 *-(kai_1**2/tau_1**2+1)
+    # beta = 2 * pi * n_e1 / lamda1
+    beta_eo_1 = 2 * np.pi * (n_e1 + delta_n_eo_1) / lamda1
+    beta_eo_2 = 2 * np.pi * (n_e1 + delta_n_eo_2) / lamda1
+
+    alfa = np.exp(-L_1 * sigma)  # 损耗，默认为1，无损耗
+
+    # phi = (L_1 - l_eo_1 - l_eo_2) * beta
+    phi_1 = l_eo_1 * beta_eo_1
+    phi_2 = l_eo_2 * beta_eo_2
+    # L_e1 = L_1 * (0.5 + (1 - kai_1[0] ** 2) / kai_1[0] ** 2)
+    # print(f'R={L_1*1e6}um微环')
+    # print(f'tau_1={tau_1:.3f}')
+    # print(f'kai_1={kai_1:.3f}')
+    # print(f'tau_2={tau_2:.3f}')
+    # print(f'kai_2={kai_2:.3f}')
+    # print(f'R={L_1 * 1e6}um微环有效长度：L_e,1={L_e1 * 1e6}um')
+
+    T_1 = (tau_1 - alfa * tau_2 * np.exp(-1j * (phi_1 + phi_2))) / (
+        1 - alfa * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
+    )  # 直输出端传递函数
+    D_1 = (-((alfa) ** 0.5) * kai_1 * kai_2 * np.exp(-1j * phi_1)) / (
+        1 - alfa * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
+    )  # 下载端传递函数
+
+    phi_T_1 = np.angle(T_1)
+    A_T_1 = np.abs(T_1)
+    phi_D_1 = np.angle(D_1)
+    A_D_1 = np.abs(D_1)
+    return phi_T_1, A_T_1, phi_D_1, A_D_1
