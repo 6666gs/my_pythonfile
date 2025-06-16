@@ -215,6 +215,8 @@ def read_csv_arrays(prefile, skiprows, readcoll):
 
 
 def plt_ready(n: int = 1, cols: int = 2):
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
     """预先设置好绘图环境
 
     Args:
