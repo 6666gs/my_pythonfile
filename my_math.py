@@ -302,15 +302,15 @@ def select_file_gui():
 
 
 def ring_T_D(
-    L_1: float = 3500e-6,
-    l_eo_1: float = 0,
-    l_eo_2: float = 0,
+    L_1: float = 3500e-6,  # [m]
+    l_eo_1: float = 0,  # [m]
+    l_eo_2: float = 0,  # [m]
     delta_n_eo_1: float = 0,
     delta_n_eo_2: float = 0,
     tau_1: float = 0.8,
     tau_2: float = 0.8,
-    sigma: float = 0,
-    lamda1: np.ndarray = np.array([]),
+    sigma: float = 0,  # [db/m]
+    lamda1: np.ndarray = np.array([]),  # [m]
     n_e1: np.ndarray = np.array([]),
 ):
     '''
@@ -337,7 +337,7 @@ def ring_T_D(
     beta_eo_1 = 2 * np.pi * (n_e1 + delta_n_eo_1) / lamda1
     beta_eo_2 = 2 * np.pi * (n_e1 + delta_n_eo_2) / lamda1
 
-    alfa = np.exp(-L_1 * sigma)  # 损耗，默认为1，无损耗
+    alfa = np.exp(-L_1 * sigma)  # 功率损耗系数，sigma单位为1db/m
 
     # phi = (L_1 - l_eo_1 - l_eo_2) * beta
     phi_1 = l_eo_1 * beta_eo_1
@@ -350,11 +350,11 @@ def ring_T_D(
     # print(f'kai_2={kai_2:.3f}')
     # print(f'R={L_1 * 1e6}um微环有效长度：L_e,1={L_e1 * 1e6}um')
 
-    T_1 = (tau_1 - alfa * tau_2 * np.exp(-1j * (phi_1 + phi_2))) / (
-        1 - alfa * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
+    T_1 = (tau_1 - alfa**0.5 * tau_2 * np.exp(-1j * (phi_1 + phi_2))) / (
+        1 - alfa**0.5 * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
     )  # 直输出端传递函数
-    D_1 = (-((alfa) ** 0.5) * kai_1 * kai_2 * np.exp(-1j * phi_1)) / (
-        1 - alfa * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
+    D_1 = (-((alfa**0.5) ** 0.5) * kai_1 * kai_2 * np.exp(-1j * phi_1)) / (
+        1 - alfa**0.5 * tau_1 * tau_2 * np.exp(-1j * (phi_1 + phi_2))
     )  # 下载端传递函数
 
     phi_T_1 = np.angle(T_1)
