@@ -238,6 +238,9 @@ def plt_ready(n: int = 1, cols: int = 2):
 
     # 创建绘图布局
     # cols = 2  # 每行显示2个子图
+    if n == 0:
+        return None, None
+
     rows = (n + cols - 1) // cols
     fig, axs = plt.subplots(rows, cols, figsize=(cols * 8, rows * 5))
     axs = axs.ravel() if isinstance(axs, np.ndarray) else [axs]
