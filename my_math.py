@@ -171,16 +171,19 @@ def read_csv_arrays(prefile, skiprows, readcoll):
     for filename in os.listdir(prefile):
         if filename.endswith('.csv'):
             # 增强正则表达式捕获step和range参数（网页1/网页6）
-            pattern = r"^.*?_(.*?)_step(\d+[a-zA-Z]+)_range(\d+)\.csv$"
+            pattern = r"^.*?_(.*?)_step(\d+[a-zA-Z]+)_range(\d+)_source(\d+)dbm\.csv$"
             match = re.match(pattern, filename)
 
             if match:
                 core_name = match.group(1).replace('-', '_')
                 step_val = match.group(2).lower()  # 统一小写处理（网页8）
                 range_val = match.group(3)
+                source_val = match.group(4)
 
                 # 构建唯一键名（网页3/网页7）
-                base_name = f"{core_name}_step{step_val}_range{range_val}"
+                base_name = (
+                    f"{core_name}_step{step_val}_range{range_val}_source{source_val}"
+                )
 
                 # 冲突检测与处理（网页2/网页4）
                 if base_name in conflict_counter:

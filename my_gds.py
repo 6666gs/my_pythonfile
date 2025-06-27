@@ -768,7 +768,10 @@ def add_1x2MMItree(
     num: int = 5,
     L_basaer: float = 180,
     W_basaer: float = 60,
+    mmi_wg_width: float = 1,
     wg_width: float = 1,
+    wg_lvbo: float = 0.8,
+    wg_lvbo_length: float = 100,
 ):
     '''
 
@@ -827,21 +830,38 @@ def add_1x2MMItree(
         taper_length=taper_length,
         taper_width=taper_width,
         separation=separation,
-        end_width=wg_width,
+        end_width=mmi_wg_width,
     )
-    wg1 = mmi_pro << add_wg_1(wg_width=wg_width, layer=layer, wg_length=20)
-    wg2 = mmi_pro << add_wg_1(wg_width=wg_width, layer=layer, wg_length=20)
-    wg3 = mmi_pro << add_wg_1(wg_width=wg_width, layer=layer, wg_length=20)
-    wg1.connect('o1', mmi1.ports['o1'])
-    wg2.connect('o1', mmi1.ports['o2'])
-    wg3.connect('o1', mmi1.ports['o3'])
-    mmi_pro.add_port(name='o1', port=wg1.ports['o2'])
-    mmi_pro.add_port(name='o2', port=wg2.ports['o2'])
-    mmi_pro.add_port(name='o3', port=wg3.ports['o2'])
+    taper_wg_mmi = gf.components.taper2(
+        length=20, width1=wg_width, width2=mmi_wg_width, layer=layer
+    )
+    taper_wg_mmi_ref1 = mmi_pro.add_ref(taper_wg_mmi)
+    taper_wg_mmi_ref2 = mmi_pro.add_ref(taper_wg_mmi)
+    taper_wg_mmi_ref3 = mmi_pro.add_ref(taper_wg_mmi)
+
+    taper_wg_mmi_ref1.connect('o2', mmi1.ports['o1'])
+    taper_wg_mmi_ref2.connect('o2', mmi1.ports['o2'])
+    taper_wg_mmi_ref3.connect('o2', mmi1.ports['o3'])
+    mmi_pro.add_port(name='o1', port=taper_wg_mmi_ref1.ports['o1'])
+    mmi_pro.add_port(name='o2', port=taper_wg_mmi_ref2.ports['o1'])
+    mmi_pro.add_port(name='o3', port=taper_wg_mmi_ref3.ports['o1'])
 
     ##############################################################################
+    gc_pro = gf.Component()
+    gc = gc_pro << add_gc_1(wg_width=wg_width, layer=layer)
+    taper_wg_lvbo = gf.components.taper2(
+        length=20, width1=wg_width, width2=wg_lvbo, layer=layer
+    )
+    taper_wg_lvbo_ref1 = gc_pro.add_ref(taper_wg_lvbo)
+    taper_wg_lvbo_ref2 = gc_pro.add_ref(taper_wg_lvbo)
+    taper_wg_lvbo_ref1.connect('o1', gc.ports['o1'])
+    wg1 = gc_pro << add_wg_1(wg_length=wg_lvbo_length, wg_width=wg_lvbo, layer=layer)
+    wg1.connect('o1', taper_wg_lvbo_ref1.ports['o2'])
+    taper_wg_lvbo_ref2.connect('o2', wg1.ports['o2'])
+    gc_pro.add_port(name='o1', port=taper_wg_lvbo_ref2.ports['o1'])
+    ##############################################################################
     mmi1 = c1.add_ref(mmi_pro)
-    gc1 = c1 << add_gc_1(wg_width=wg_width, layer=layer)
+    gc1 = c1.add_ref(gc_pro)
     # L_basaer = 180
     # W_basaer = 60
     section1 = gf.Section(width=wg_width, layer=layer, port_names=('o1', 'o2'))
@@ -871,7 +891,7 @@ def add_1x2MMItree(
     basaer_1.connect('o1', mmi1.ports['o2'])
     basaer_2.connect('o1', mmi1.ports['o3'])
     gc1.connect('o1', mmi1.ports['o1'])
-    gc1 = c1 << add_gc_1(wg_width=wg_width, layer=layer)
+    gc1 = c1.add_ref(gc_pro)
     gc1.connect('o1', basaer_2.ports['o2'])
     # N = N  # 级联的MMI数量
     for i in range(num - 1):
@@ -881,9 +901,9 @@ def add_1x2MMItree(
         basaer_2 = c1.add_ref(b2)
         basaer_1.connect('o1', mmi1.ports['o2'])
         basaer_2.connect('o1', mmi1.ports['o3'])
-        gc1 = c1 << add_gc_1(wg_width=wg_width, layer=layer)
+        gc1 = c1.add_ref(gc_pro)
         gc1.connect('o1', basaer_2.ports['o2'])
-    gc1 = c1 << add_gc_1(wg_width=wg_width, layer=layer)
+    gc1 = c1.add_ref(gc_pro)
     gc1.connect('o1', basaer_1.ports['o2'])
     c1.show()
 
