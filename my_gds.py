@@ -915,6 +915,7 @@ def add_multi_wg_tlet(
     et_layer: tuple,
     et_separation: float,
     et_width: tuple,
+    et_length_d: float = 350,
 ):
     """创建一个带有GSG电极结构的多模波导器件
 
@@ -928,6 +929,7 @@ def add_multi_wg_tlet(
         et_layer (tuple): 电极所在的层，格式为(layer, datatype)
         et_separation (float): 相邻电极之间的间距，单位为微米
         et_width (tuple): 三个电极的宽度，格式为(上电极宽度, 中心电极宽度, 下电极宽度)
+        et_length_d (float): 中心电极的直通段长度相比多模波导少的距离，单位为微米，默认为350μm
 
     Returns:
         gf.Component: 包含多模波导和T型电极结构的GDSFactory组件对象，
@@ -944,7 +946,7 @@ def add_multi_wg_tlet(
 
     Note:
         - 电极弯曲半径固定为217μm
-        - 电极直通段长度为 multi_wg_length - 350
+        - 电极直通段长度为 multi_wg_length - et_length_d
         - 中心电极通过'et_middle'端口与波导中心连接
         - 适用于电光调制器、相位调制器等应用场景
     """
@@ -977,7 +979,7 @@ def add_multi_wg_tlet(
     path1_ref.drotate(-90)
     # 添加电极的直通端和第二个弯曲
     path2 = gf.Path()
-    path2 += gf.path.straight(length=multi_wg_length - 350)
+    path2 += gf.path.straight(length=multi_wg_length - et_length_d)
     path2 += gf.path.arc(radius=217, angle=90)
     s0 = gf.Section(width=et_width[1], layer=et_layer, port_names=('o1', 'o2'))
     s1 = gf.Section(
@@ -994,7 +996,10 @@ def add_multi_wg_tlet(
     path2_1 = gf.path.extrude(path2, cross_section=x)
     path2_1.add_port(
         name='et_middle',
-        center=((multi_wg_length - 350) / 2, -(et_width[1] / 2 + et_separation / 2)),
+        center=(
+            (multi_wg_length - et_length_d) / 2,
+            -(et_width[1] / 2 + et_separation / 2),
+        ),
         layer=et_layer,
         width=et_width[1],
         orientation=180,
