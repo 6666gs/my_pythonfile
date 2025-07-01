@@ -70,7 +70,9 @@ def find_3db(freorlam, power_spectrum, height=-20, distance=100):
     :param height: 过滤峰值大小
     :return:
         - peaks: [峰值的序号]
+
         - bandwidths: [每个峰值的bandwidth]
+
         - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
@@ -111,7 +113,9 @@ def find_50(freorlam, power_spectrum, height=0.5, distance=100):
     :param height: 过滤峰值大小
     :return:
         - peaks: [峰值的序号]
+
         - bandwidths: [每个峰值的bandwidth]
+
         - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
@@ -148,17 +152,25 @@ def find_50(freorlam, power_spectrum, height=0.5, distance=100):
 def read_csv_arrays(prefile, skiprows, readcoll):
     '''
     读取prefile目录中所有满足格式的文件
-    格式要求：
+    格式要求:
+
         芯片名_<器件名_序号_%$#X>_stepX_rangeX.csv
+
         1、其中<>中需要为英文和数字，间隔使用下划线_
         2、实际并不包括<>
         3、<>内的内容加上_stepX_rangeX会变成读取的数组变量名
-        4、读取列数由列表readcoll指定
-        5、跳过行数由列表skiprows指定
-    :param prefile: 数据文件所在文件夹的绝对地址或相对地址，如
+        4、读取列数由列表readcoll指定，对应不同的range
+        5、跳过行数由列表skiprows指定，对应不同的range
+
+    :param
+        - prefile: 数据文件所在文件夹的绝对地址或相对地址，如
                         prefile = r'.\20250516LTdbr_ring'
                         或者
                         prefile = r'E:\\onedrive\\Project\\pycharm\\processdata\\DBR_RING\\20250516LTdbr_ring'
+
+        - skiprows: 跳过的行数，字典格式，如
+
+        - readcoll: 读取的列数，字典格式
     :return:
             1、每读取一个文件，即返回读取成功信息
             2、返回所有读取内容
@@ -171,7 +183,7 @@ def read_csv_arrays(prefile, skiprows, readcoll):
     for filename in os.listdir(prefile):
         if filename.endswith('.csv'):
             # 增强正则表达式捕获step和range参数（网页1/网页6）
-            pattern = r"^.*?_(.*?)_step(\d+[a-zA-Z]+)_range(\d+)_source(\d+)dbm\.csv$"
+            pattern = r"^.*?_(.*?)_step(\d+(?:\.\d+)?[a-zA-Z]+)_range(\d+)_source(\d+)dbm\.csv$"
             match = re.match(pattern, filename)
 
             if match:
@@ -200,8 +212,8 @@ def read_csv_arrays(prefile, skiprows, readcoll):
                     df = pd.read_csv(
                         filepath,
                         encoding="utf-8",
-                        skiprows=skiprows,
-                        usecols=readcoll,
+                        skiprows=skiprows[f'{range_val}'],
+                        usecols=readcoll[f'{range_val}'],
                         header=None,
                         engine='python',  # 增强解析兼容性（网页5）
                     )
@@ -218,17 +230,18 @@ def read_csv_arrays(prefile, skiprows, readcoll):
 
 
 def plt_ready(n: int = 1, cols: int = 2):
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    plt.rcParams['axes.unicode_minus'] = False
     """预先设置好绘图环境
 
     Args:
         n (_type_): figure的子图数量
-    例如：n=4表示绘图时有4个子图
+        例如：n=4表示绘图时有4个子图
 
     Returns:
-        - fig, axs: 返回绘图的figure和子图数组axs
+        - fig axs: 返回绘图的figure和子图数组axs
     """
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+
     # 全局字体设置
     plt.rcParams.update(
         {
@@ -323,6 +336,7 @@ def ring_T_D(
 ):
     '''
     添加一个微环
+
     :param L_1: 周长
     :param delta_n_eo_1: 正对着入射光的电光折射率改变量
     :param delta_n_eo_2:
