@@ -34,8 +34,8 @@ def efficient_db(x):
 def excel_read(file_dir, sheet='Sheet1'):
     '''
     :param file_dir: excel文件地址
-    :param sheet: 选取的sheet，例如'Sheet1'
-    :return: 返回字典，键为每列标题，值为每列数据的列表。
+    :param sheet: 选取的sheet,例如'Sheet1'
+    :return dic: 返回字典，键为每列标题，值为每列数据的列表。
     '''
     data = pd.read_excel(file_dir, sheet_name=sheet)
     df = pd.DataFrame(data)
@@ -49,8 +49,7 @@ def excel_read(file_dir, sheet='Sheet1'):
 def csv_read_to_array(file_dir):
     '''
     :param file_dir: csv文件的路径。
-    :return:
-        - df_array: 一个NumPy数组，包含csv文件中的数据，第一行表头除外，数据类型为float32。
+    :return df_array: 一个NumPy数组，包含csv文件中的数据，第一行表头除外，数据类型为float32。
     '''
     df = pd.read_csv(
         file_dir,
@@ -68,12 +67,9 @@ def find_3db(freorlam, power_spectrum, height=-20, distance=100):
     :param freorlam: 频率/Hz或波长/nm
     :param power_spectrum: 功率谱密度，单位为db
     :param height: 过滤峰值大小
-    :return:
-        - peaks: [峰值的序号]
-
-        - bandwidths: [每个峰值的bandwidth]
-
-        - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
+    :return peaks: [峰值的序号]
+    :return bandwidths: [每个峰值的bandwidth]
+    :return all: [(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
     peaks_point, _ = find_peaks(
@@ -111,12 +107,11 @@ def find_50(freorlam, power_spectrum, height=0.5, distance=100):
     :param freorlam: 频率/Hz或波长/nm
     :param power_spectrum: 功率谱密度，单位为幅度大小
     :param height: 过滤峰值大小
-    :return:
-        - peaks: [峰值的序号]
+    :return peaks: [峰值的序号]
 
-        - bandwidths: [每个峰值的bandwidth]
+    :return bandwidths: [每个峰值的bandwidth]
 
-        - all:[(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
+    :return all: [(peak在横坐标轴的序号,peak在横坐标轴的值,3db bandwidth)]
     '''
     # 找到所有峰值
     peaks_point, _ = find_peaks(
@@ -162,15 +157,21 @@ def read_csv_arrays(prefile, skiprows, readcoll):
         4、读取列数由列表readcoll指定，对应不同的range
         5、跳过行数由列表skiprows指定，对应不同的range
 
-    :param
-        - prefile: 数据文件所在文件夹的绝对地址或相对地址，如
+    :param prefile: 数据文件所在文件夹的绝对地址或相对地址,如
                         prefile = r'.\20250516LTdbr_ring'
                         或者
                         prefile = r'E:\\onedrive\\Project\\pycharm\\processdata\\DBR_RING\\20250516LTdbr_ring'
 
-        - skiprows: 跳过的行数，字典格式，如
+    :param skiprows: 跳过的行数，字典格式, 如
+        skiprows = {
+            'range1': 0,
+            'range2': 1,
+        }
 
-        - readcoll: 读取的列数，字典格式
+    :param readcoll: 读取的列数，字典格式
+        readcoll = {
+            'range1': [0, 1],
+            'range2': [0, 1, 2],
     :return:
             1、每读取一个文件，即返回读取成功信息
             2、返回所有读取内容
@@ -232,12 +233,10 @@ def read_csv_arrays(prefile, skiprows, readcoll):
 def plt_ready(n: int = 1, cols: int = 2):
     """预先设置好绘图环境
 
-    Args:
-        n (_type_): figure的子图数量
-        例如：n=4表示绘图时有4个子图
+    :param n: figure的子图数量
+    :param cols: 每行显示的子图数量
 
-    Returns:
-        - fig axs: 返回绘图的figure和子图数组axs
+    :return fig, axs: 返回绘图的figure和子图数组axs
     """
     plt.rcParams['font.sans-serif'] = ['SimHei']
     plt.rcParams['axes.unicode_minus'] = False
@@ -338,12 +337,16 @@ def ring_T_D(
     添加一个微环
 
     :param L_1: 周长
+    :param l_eo_1: 与入射光正对的半环长度
+    :param l_eo_2: 与入射光背对的半环长度
     :param delta_n_eo_1: 正对着入射光的电光折射率改变量
-    :param delta_n_eo_2:
-    :param tau_1: 直通系数，默认上耦合和下耦合相同
-    :return:
-        - T_1:直通端电场
-        - D_1:下载端电场
+    :param delta_n_eo_2: 背对着入射光的电光折射率改变量
+    :param tau_1: 直通系数，入射光第一个经过的耦合区
+    :param tau_2: 直通系数，入射光第二个经过的耦合区
+    :param sigma: 功率损耗系数，单位为1db/m
+    :param lamda1: 波长数组，单位为m
+    :return T_1: 直通端电场
+    :return D_1: 下载端电场
     '''
 
     # tau_array_1 = np.ones(len(lamda1)) * tau_1

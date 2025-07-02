@@ -1,3 +1,9 @@
+'''
+gdsfactory version: 8.8.9
+author: wuxiao
+
+'''
+
 import math
 from math import pi
 
@@ -770,7 +776,7 @@ def add_1x2MMItree(
     W_basaer: float = 60,
     mmi_wg_width: float = 1,
     wg_width: float = 1,
-    gc_pro: gf.Component = None,
+    gc_pro: gf.Component | None = None,
     wg_lvbo: float = 0.8,
     wg_lvbo_length: float = 100,
 ):
