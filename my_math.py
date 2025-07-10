@@ -8,7 +8,9 @@ import string
 import re
 from scipy.signal import find_peaks
 
-plt.rcParams['font.sans-serif'] = ['SimHei']
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['text.usetex'] = False
 
 
 def dbm_mW(x):
@@ -230,7 +232,7 @@ def read_csv_arrays(prefile, skiprows, readcoll):
     return data_dict
 
 
-def plt_ready(n: int = 1, cols: int = 2):
+def plt_ready(n: int = 1, cols: int = 2, figsize=(8, 5)):
     """预先设置好绘图环境
 
     :param n: figure的子图数量
@@ -238,7 +240,7 @@ def plt_ready(n: int = 1, cols: int = 2):
 
     :return fig, axs: 返回绘图的figure和子图数组axs
     """
-    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
     plt.rcParams['axes.unicode_minus'] = False
 
     # 全局字体设置
@@ -257,7 +259,7 @@ def plt_ready(n: int = 1, cols: int = 2):
         return None, None
 
     rows = (n + cols - 1) // cols
-    fig, axs = plt.subplots(rows, cols, figsize=(cols * 8, rows * 5))
+    fig, axs = plt.subplots(rows, cols, figsize=(cols * figsize[0], rows * figsize[1]))
     axs = axs.ravel() if isinstance(axs, np.ndarray) else [axs]
     # 隐藏空白子图
     for j in range(n, len(axs)):
