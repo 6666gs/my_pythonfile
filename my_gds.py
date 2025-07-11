@@ -1604,3 +1604,33 @@ def add_circle_dbr(
     c1.add_port('o1', port=dbr_wg.ports['o1'])
     c1.add_port('o2', port=dbr_wg.ports['o2'])
     return c1
+
+
+def add_jingyuan(D, L):
+    '''
+    添加一个晶圆
+
+    :param D: 晶圆直径[um]
+    :param L: 晶圆长度[um]
+
+    :return: 返回一个包含晶圆的GDSFactory组件对象
+    '''
+    c1 = gf.Component()
+
+    R = D / 2
+    distance = (R**2 - (L / 2) ** 2) ** 0.5
+    angle = 2 * np.atan(L / 2 / distance) / np.pi * 180
+    path0 = gf.Path()
+    path0 += gf.path.arc(radius=R / 2, angle=360 - angle, npoints=1000)
+
+    s0 = gf.Section(width=R, layer=(1, 0), port_names=('o1', 'o2'))
+    x = gf.CrossSection(sections=tuple([s0]))
+    path0_1 = gf.path.extrude(path0, cross_section=x)
+    path0_1_ref = c1.add_ref(path0_1)  # type:ignore
+
+    path0_1_ref.dmove((0, -R / 2))
+    path0_1_ref.drotate(angle=angle / 2, center=(0, 0))
+
+    poles = np.array([[0, 0], [L / 2, -distance], [-L / 2, -distance]])
+    c1.add_polygon(poles, layer=(1, 0))
+    return c1
