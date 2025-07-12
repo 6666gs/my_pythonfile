@@ -1634,3 +1634,96 @@ def add_jingyuan(D, L):
     poles = np.array([[0, 0], [L / 2, -distance], [-L / 2, -distance]])
     c1.add_polygon(poles, layer=(1, 0))
     return c1
+
+
+def generate_orientation_marker(
+    wafer_diameter, region_size, rows, marker_position, layer
+):
+    """
+    生成晶向标记版图，基于输入的区域大小、每行的区域数和标记的相对位置。
+    假设晶圆上每个区域大小相同，为每个区域添加晶向标记。
+
+    Args:
+        wafer_diameter (float): 晶圆直径，单位为 um。
+        region_size (list): 每个区域的大小 [width, height]，单位为 um。
+        rows (list): 每行的区域数，例如 [2, 3, 2]。
+        marker_position (list): 标记在每个区域中的相对位置 [x, y]，单位为 um。
+        layer (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
+
+    Returns:
+        gdsfactory.Component: 包含所有晶向标记的 GDS 工件。
+    """
+    # wafer_diameter = 150000  # 晶圆直径，单位为 um
+    layout = gf.Component()
+
+    def create_marker():
+        """创建晶向标记"""
+        marker = gf.Component()
+        # 添加箭头形状
+        marker.add_polygon(
+            np.array([(0, 0), (110, 0), (110, 350), (0, 350)]), layer=layer
+        )  # 下箭头
+        marker.add_polygon(
+            np.array([(165, 0), (-55, 0), (55, -150)]), layer=layer
+        )  # 上箭头
+        return marker
+
+    y_offset = 0
+    for row_index, num_regions in enumerate(rows):
+        row_width = num_regions * region_size[0]
+        x_start = (wafer_diameter - row_width) / 2  # 使区域居中
+
+        for col_index in range(num_regions):
+            x = x_start + col_index * region_size[0] + marker_position[0]
+            y = y_offset + marker_position[1]
+
+            # 创建标记并添加到版图
+            marker = create_marker()
+            layout.add_ref(marker).dmove((x, y))
+
+        y_offset += region_size[1]
+
+    return layout
+
+
+def generate_number_layout(
+    wafer_diameter, region_size, rows, number_position, text, layer_text
+):
+    """
+    生成数字版图，基于输入的区域大小、每行的区域数和数字的相对位置。
+    假设晶圆上每个区域大小相同，为每个左下角产生数字。
+
+    Args:
+        wafer_diameter (float): 晶圆直径，单位为 um。
+        region_size (list): 每个区域的大小 [width, height]，单位为 um。
+        rows (list): 每行的区域数，例如 [2, 3, 2]。从下到上算
+        number_position (list): 数字在每个区域中的相对位置 [x, y]，单位为 um。
+        text (str): 要添加的文本内容。
+        layer_text (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
+
+    Returns:
+        gdsfactory.Component: 包含所有数字版图的 GDS 工件。
+    """
+    # wafer_diameter = 150000  # 晶圆直径，单位为 um
+    layout = gf.Component()
+
+    y_offset = 0
+    for row_index, num_regions in enumerate(rows):
+        row_width = num_regions * region_size[0]
+        x_start = (wafer_diameter - row_width) / 2  # 使区域居中
+
+        for col_index in range(num_regions):
+            x = x_start + col_index * region_size[0] + number_position[0]
+            y = y_offset + number_position[1]
+
+            # 创建数字并添加到版图
+            number = gf.components.text(
+                text + ' ' + str((row_index + 1) * 10 + col_index + 1),
+                size=150,
+                layer=layer_text,
+            )
+            layout.add_ref(number).dmove((x, y))
+
+        y_offset += region_size[1]
+
+    return layout
