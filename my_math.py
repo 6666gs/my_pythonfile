@@ -7,6 +7,7 @@ import os
 import string
 import re
 from scipy.signal import find_peaks
+import scipy.optimize
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False
@@ -389,3 +390,70 @@ def ring_T_D(
     phi_D_1 = np.angle(D_1)
     A_D_1 = np.abs(D_1)
     return phi_T_1, A_T_1, phi_D_1, A_D_1
+
+
+def orthogonal_mapping(type):
+    if type == 'x':
+        matrix = np.array([[1, 0], [0, -1]])
+    elif type == 'y':
+        matrix = np.array([[-1, 0], [0, 1]])
+    elif type == 'clockwise90':
+        matrix = np.array([[0, 1], [-1, 0]])
+    elif type == 'counterclockwise90':
+        matrix = np.array([[0, -1], [1, 0]])
+    else:
+        raise ValueError(
+            "Unsupported orthogonal mapping type. Use 'x', 'y', 'clockwise90', or 'counterclockwise90'."
+        )
+    return matrix.T
+
+
+def fit_bezier_curve(target_points, initial_control_points):
+    """
+    使用优化方法拟合贝塞尔曲线。
+    """
+
+    def loss_function(control_points, target_points):
+        """
+        损失函数：计算贝塞尔曲线与目标曲线的距离。
+        """
+        control_points = np.reshape(control_points, (-1, 2))
+        bezier_points = bezier_curve(control_points, len(target_points))
+        return np.sum(np.linalg.norm(bezier_points - target_points, axis=1))
+
+    result = scipy.optimize.minimize(
+        loss_function,
+        x0=np.array(initial_control_points).flatten(),
+        args=(target_points,),
+        method='L-BFGS-B',
+    )
+    optimized_control_points = np.reshape(result.x, (-1, 2))
+    return optimized_control_points
+
+
+def bezier_curve(control_points, num_points=100):
+    """
+    绘制 n 阶贝塞尔曲线。
+
+    Args:
+        control_points (list of tuple): 控制点列表，每个控制点为 (x, y) 坐标。
+        num_points (int): 曲线上的点数，默认值为 100。
+
+    Returns:
+        np.ndarray: 贝塞尔曲线上的点坐标。
+    """
+    n = len(control_points) - 1  # 贝塞尔曲线的阶数
+    t = np.linspace(0, 1, num_points)  # 参数 t 的取值范围
+
+    # 计算贝塞尔曲线上的点
+    curve_points = np.zeros((num_points, 2))  # 初始化为二维数组
+    for i in range(n + 1):
+        binomial_coeff = math.factorial(n) / (math.factorial(i) * math.factorial(n - i))
+        curve_points += (
+            binomial_coeff
+            * (t**i)[:, None]
+            * ((1 - t) ** (n - i))[:, None]
+            * np.array(control_points[i])
+        )
+
+    return curve_points
