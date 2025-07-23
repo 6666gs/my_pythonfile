@@ -13,8 +13,8 @@ class SpectrumAnalyzer:
     signal: np.ndarray
     sample_rate: float
     N: int
-    freqs: np.ndarray | None
-    spectrum: np.ndarray | None
+    freqs: np.ndarray
+    spectrum: np.ndarray
 
     def __init__(self, t_values, signal):
         """
@@ -28,10 +28,8 @@ class SpectrumAnalyzer:
         self.signal = signal
         self.sample_rate = 1 / (t_values[1] - t_values[0]) if len(t_values) > 1 else 1.0
         self.N = len(signal)
-        self.freqs = None
-        self.spectrum = None
 
-    def calculate_spectrum(self, single_sided=True):
+    def calculate_spectrum(self, single_sided=True) -> tuple[np.ndarray, np.ndarray]:
         """计算信号的频谱"""
         # 执行FFT
         fft_result = fft(self.signal)
@@ -49,7 +47,9 @@ class SpectrumAnalyzer:
 
         return self.freqs, self.spectrum
 
-    def find_peaks(self, min_height=0.1, min_distance=10, single_sided=True):
+    def find_peaks(
+        self, min_height=0.1, min_distance=10, single_sided=True
+    ) -> tuple[np.ndarray, np.ndarray]:
         """查找频谱峰值"""
 
         if self.spectrum is None:

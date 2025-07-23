@@ -8,6 +8,7 @@ import string
 import re
 from scipy.signal import find_peaks
 import scipy.optimize
+from typing import Tuple, Union
 
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False
@@ -233,7 +234,9 @@ def read_csv_arrays(prefile, skiprows, readcoll):
     return data_dict
 
 
-def plt_ready(n: int = 1, cols: int = 2, figsize=(8, 5)):
+def plt_ready(
+    n: int = 1, cols: int = 2, figsize=(8, 5)
+) -> Union[Tuple[None, None], Tuple[plt.Figure, np.ndarray]]:
     """预先设置好绘图环境
 
     :param n: figure的子图数量
@@ -393,6 +396,13 @@ def ring_T_D(
 
 
 def orthogonal_mapping(type):
+    '''
+    生成二维空间的正交映射矩阵。
+    Args:
+        type (str): 映射类型，可以是 'x', 'y', 'clockwise90', 'counterclockwise90'。
+    Returns:
+        np.ndarray: 2x2 的正交映射矩阵。
+    '''
     if type == 'x':
         matrix = np.array([[1, 0], [0, -1]])
     elif type == 'y':
@@ -410,7 +420,12 @@ def orthogonal_mapping(type):
 
 def fit_bezier_curve(target_points, initial_control_points):
     """
-    使用优化方法拟合贝塞尔曲线。
+    使用优化方法用贝塞尔曲线来近似目标曲线。
+    Args:
+        target_points (np.ndarray): 目标曲线上的点坐标，形状为 (n, 2)，其中 n 是点的数量。
+        initial_control_points (list of tuple): 初始控制点列表，每个控制点为 (x, y) 坐标。
+    Returns:
+        np.ndarray: 优化后的控制点坐标，形状为 (m, 2)，其中 m 是控制点的数量。
     """
 
     def loss_function(control_points, target_points):
