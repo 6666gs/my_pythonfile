@@ -1744,15 +1744,19 @@ def generate_number_layout(
 
 
 @gf.cell
-def add_caliper(level, layer1, layer2, spacing) -> gf.Component:
+def add_caliper(
+    level, layer1=(1,0), layer2=(2,0), spacing, bar_length=30, bar_period1=9
+) -> gf.Component:
     '''
 
-    添加游标卡尺组件
+    添加游标卡尺组件,中间为0，上下各一半
     Args:
         level: 游标卡尺的级数
         layer1: 红色部分的layer
         layer2: 蓝色部分的layer
         spacing: 两个条周期之间的间距
+        bar_length: 每个条的长度
+        bar_period1: 红色部分的周期长度
     Returns:
         gf.Component: 返回游标卡尺组件
 
@@ -1761,13 +1765,13 @@ def add_caliper(level, layer1, layer2, spacing) -> gf.Component:
     c = gf.Component()
 
     # 参数设置
-    bar_width = 3  # 每个条的宽度
-    bar_length = 50  # 每个条的长度
-    bar_period1 = 9.0
-    bar_period2 = 9.0 + spacing
+    bar_width = 1.8  # 每个条的宽度
+    # bar_length = 90  # 每个条的长度
+    # bar_period1 = 9.0
+    bar_period2 = bar_period1 + spacing
 
     # 绘制红色部分
-    for i in range(level):
+    for i in range(int((level + 1) / 2)):
 
         y_offset = i * bar_period1
         if i == 0:
@@ -1785,9 +1789,26 @@ def add_caliper(level, layer1, layer2, spacing) -> gf.Component:
             ],
             layer=layer1,
         )
+    for i in range(int((level + 1) / 2)):
+        y_offset = -i * bar_period1
+        if i == 0:
+            continue
+        if i % 5 == 0:
+            x_offset = -bar_length - 20
+        else:
+            x_offset = -bar_length
+        c.add_polygon(
+            points=[
+                [x_offset, y_offset],
+                [0, y_offset],
+                [0, y_offset + bar_width],
+                [x_offset, y_offset + bar_width],
+            ],
+            layer=layer1,
+        )
 
     # 绘制蓝色部分
-    for i in range(level):
+    for i in range(int((level + 1) / 2)):
         y_offset = i * bar_period2
         if i == 0:
             x_offset = bar_length + 50
@@ -1815,4 +1836,30 @@ def add_caliper(level, layer1, layer2, spacing) -> gf.Component:
             )
             c.add_ref(t)
 
+    for i in range(int((level + 1) / 2)):
+        y_offset = -i * bar_period2
+        if i == 0:
+            continue
+        if i % 5 == 0:
+            x_offset = bar_length + 20
+        else:
+            x_offset = bar_length
+        c.add_polygon(
+            points=[
+                [x_offset, y_offset],
+                [0, y_offset],
+                [0, y_offset + bar_width],
+                [x_offset, y_offset + bar_width],
+            ],
+            layer=layer2,
+        )
+        if i % 5 == 0 and i != 0:
+            # 添加偏差值
+            t = gf.components.text(
+                '-' + str(spacing * i),
+                position=(x_offset + 10, y_offset),
+                size=15,
+                layer=layer2,
+            )
+            c.add_ref(t)
     return c
