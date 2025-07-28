@@ -13,6 +13,7 @@ from gdsfactory.component import Component
 from gdsfactory.generic_tech import LAYER
 
 
+@gf.cell
 def add_2x2MMI_1(
     core_length: float = 87,
     core_width: float = 10.2,
@@ -120,6 +121,7 @@ def add_2x2MMI_1(
     return c
 
 
+@gf.cell
 def add_1x2MMI_1(
     core_length: float = 23.6,
     core_width: float = 5.7,
@@ -213,6 +215,7 @@ def add_1x2MMI_1(
     return c
 
 
+@gf.cell
 def add_wg_1(
     wg_length: float = 100,
     wg_width: float = 0.9,
@@ -249,6 +252,7 @@ def add_wg_1(
     return s
 
 
+@gf.cell
 def add_gc_1(
     boxh: float = 15,
     gratingp: float = 0.94,
@@ -358,6 +362,7 @@ def add_gc_1(
     return gc1
 
 
+@gf.cell
 def add_gc_2(
     period: float = 1,
     n: int = 20,
@@ -434,6 +439,7 @@ def add_gc_2(
     return c
 
 
+@gf.cell
 def add_ring_1(
     wg_width: float = 0.9,
     gap: float = 1.9,
@@ -572,6 +578,7 @@ def add_ring_1(
     return s
 
 
+@gf.cell
 def add_loop_mirror_1(
     layer_wg: tuple = LAYER.WG, wg_width: float = 1, multi_wg_width: float = 4
 ):
@@ -764,6 +771,7 @@ def add_loop_mirror_1(
     return loop_mirror
 
 
+@gf.cell
 def add_1x2MMItree(
     core_length: float = 23.6,
     core_width: float = 5.7,
@@ -922,6 +930,7 @@ def add_1x2MMItree(
     c1.show()
 
 
+@gf.cell
 def add_multi_wg_tlet(
     multi_wg_width: float,
     multi_wg_layer: tuple,
@@ -1363,6 +1372,7 @@ def add_bentDC(
 import kfactory as kf
 
 
+@gf.cell
 def connect_ports_with_parallelogram(
     port1: kf.Port, port2: kf.Port, layer: tuple = LAYER.SOURCE
 ):
@@ -1428,6 +1438,7 @@ def connect_ports_with_parallelogram(
     return c
 
 
+@gf.cell
 def add_ring_2(
     gap: float = 1.6,
     length_x: float = 10,
@@ -1537,6 +1548,7 @@ def add_ring_2(
     return c1
 
 
+@gf.cell
 def add_circle_dbr(
     N: int = 6000,
     circle_gap: float = 1.5,
@@ -1606,6 +1618,7 @@ def add_circle_dbr(
     return c1
 
 
+@gf.cell
 def add_jingyuan(D, L):
     '''
     添加一个晶圆
@@ -1686,6 +1699,7 @@ def generate_orientation_marker(
     return layout
 
 
+@gf.cell
 def generate_number_layout(
     wafer_diameter, region_size, rows, number_position, text, layer_text
 ):
@@ -1727,3 +1741,78 @@ def generate_number_layout(
         y_offset += region_size[1]
 
     return layout
+
+
+@gf.cell
+def add_caliper(level, layer1, layer2, spacing) -> gf.Component:
+    '''
+
+    添加游标卡尺组件
+    Args:
+        level: 游标卡尺的级数
+        layer1: 红色部分的layer
+        layer2: 蓝色部分的layer
+        spacing: 两个条周期之间的间距
+    Returns:
+        gf.Component: 返回游标卡尺组件
+
+    '''
+    # 创建一个新的组件
+    c = gf.Component()
+
+    # 参数设置
+    bar_width = 3  # 每个条的宽度
+    bar_length = 50  # 每个条的长度
+    bar_period1 = 9.0
+    bar_period2 = 9.0 + spacing
+
+    # 绘制红色部分
+    for i in range(level):
+
+        y_offset = i * bar_period1
+        if i == 0:
+            x_offset = -bar_length - 50
+        elif i % 5 == 0:
+            x_offset = -bar_length - 20
+        else:
+            x_offset = -bar_length
+        c.add_polygon(
+            points=[
+                [x_offset, y_offset],
+                [0, y_offset],
+                [0, y_offset + bar_width],
+                [x_offset, y_offset + bar_width],
+            ],
+            layer=layer1,
+        )
+
+    # 绘制蓝色部分
+    for i in range(level):
+        y_offset = i * bar_period2
+        if i == 0:
+            x_offset = bar_length + 50
+        elif i % 5 == 0:
+            x_offset = bar_length + 20
+        else:
+            x_offset = bar_length
+        c.add_polygon(
+            points=[
+                [x_offset, y_offset],
+                [0, y_offset],
+                [0, y_offset + bar_width],
+                [x_offset, y_offset + bar_width],
+            ],
+            layer=layer2,
+        )
+
+        if i % 5 == 0 and i != 0:
+            # 添加偏差值
+            t = gf.components.text(
+                str(spacing * i),
+                position=(x_offset + 10, y_offset),
+                size=15,
+                layer=layer2,
+            )
+            c.add_ref(t)
+
+    return c
