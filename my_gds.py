@@ -771,7 +771,6 @@ def add_loop_mirror_1(
     return loop_mirror
 
 
-@gf.cell
 def add_1x2MMItree(
     core_length: float = 23.6,
     core_width: float = 5.7,
@@ -1619,133 +1618,8 @@ def add_circle_dbr(
 
 
 @gf.cell
-def add_jingyuan(D, L):
-    '''
-    添加一个晶圆
-
-    :param D: 晶圆直径[um]
-    :param L: 晶圆长度[um]
-
-    :return: 返回一个包含晶圆的GDSFactory组件对象
-    '''
-    c1 = gf.Component()
-
-    R = D / 2
-    distance = (R**2 - (L / 2) ** 2) ** 0.5
-    angle = 2 * np.atan(L / 2 / distance) / np.pi * 180
-    path0 = gf.Path()
-    path0 += gf.path.arc(radius=R / 2, angle=360 - angle, npoints=1000)
-
-    s0 = gf.Section(width=R, layer=(1, 0), port_names=('o1', 'o2'))
-    x = gf.CrossSection(sections=tuple([s0]))
-    path0_1 = gf.path.extrude(path0, cross_section=x)
-    path0_1_ref = c1.add_ref(path0_1)  # type:ignore
-
-    path0_1_ref.dmove((0, -R / 2))
-    path0_1_ref.drotate(angle=angle / 2, center=(0, 0))
-
-    poles = np.array([[0, 0], [L / 2, -distance], [-L / 2, -distance]])
-    c1.add_polygon(poles, layer=(1, 0))
-    return c1
-
-
-def generate_orientation_marker(
-    wafer_diameter, region_size, rows, marker_position, layer
-):
-    """
-    生成晶向标记版图，基于输入的区域大小、每行的区域数和标记的相对位置。
-    假设晶圆上每个区域大小相同，为每个区域添加晶向标记。
-
-    Args:
-        wafer_diameter (float): 晶圆直径，单位为 um。
-        region_size (list): 每个区域的大小 [width, height]，单位为 um。
-        rows (list): 每行的区域数，例如 [2, 3, 2]。
-        marker_position (list): 标记在每个区域中的相对位置 [x, y]，单位为 um。
-        layer (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
-
-    Returns:
-        gdsfactory.Component: 包含所有晶向标记的 GDS 工件。
-    """
-    # wafer_diameter = 150000  # 晶圆直径，单位为 um
-    layout = gf.Component()
-
-    def create_marker():
-        """创建晶向标记"""
-        marker = gf.Component()
-        # 添加箭头形状
-        marker.add_polygon(
-            np.array([(0, 0), (110, 0), (110, 350), (0, 350)]), layer=layer
-        )  # 下箭头
-        marker.add_polygon(
-            np.array([(165, 0), (-55, 0), (55, -150)]), layer=layer
-        )  # 上箭头
-        return marker
-
-    y_offset = 0
-    for row_index, num_regions in enumerate(rows):
-        row_width = num_regions * region_size[0]
-        x_start = (wafer_diameter - row_width) / 2  # 使区域居中
-
-        for col_index in range(num_regions):
-            x = x_start + col_index * region_size[0] + marker_position[0]
-            y = y_offset + marker_position[1]
-
-            # 创建标记并添加到版图
-            marker = create_marker()
-            layout.add_ref(marker).dmove((x, y))
-
-        y_offset += region_size[1]
-
-    return layout
-
-
-@gf.cell
-def generate_number_layout(
-    wafer_diameter, region_size, rows, number_position, text, layer_text
-):
-    """
-    生成数字版图，基于输入的区域大小、每行的区域数和数字的相对位置。
-    假设晶圆上每个区域大小相同，为每个左下角产生数字。
-
-    Args:
-        wafer_diameter (float): 晶圆直径，单位为 um。
-        region_size (list): 每个区域的大小 [width, height]，单位为 um。
-        rows (list): 每行的区域数，例如 [2, 3, 2]。从下到上算
-        number_position (list): 数字在每个区域中的相对位置 [x, y]，单位为 um。
-        text (str): 要添加的文本内容。
-        layer_text (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
-
-    Returns:
-        gdsfactory.Component: 包含所有数字版图的 GDS 工件。
-    """
-    # wafer_diameter = 150000  # 晶圆直径，单位为 um
-    layout = gf.Component()
-
-    y_offset = 0
-    for row_index, num_regions in enumerate(rows):
-        row_width = num_regions * region_size[0]
-        x_start = (wafer_diameter - row_width) / 2  # 使区域居中
-
-        for col_index in range(num_regions):
-            x = x_start + col_index * region_size[0] + number_position[0]
-            y = y_offset + number_position[1]
-
-            # 创建数字并添加到版图
-            number = gf.components.text(
-                text + ' ' + str((row_index + 1) * 10 + col_index + 1),
-                size=150,
-                layer=layer_text,
-            )
-            layout.add_ref(number).dmove((x, y))
-
-        y_offset += region_size[1]
-
-    return layout
-
-
-@gf.cell
 def add_caliper(
-    level, layer1=(1,0), layer2=(2,0), spacing, bar_length=30, bar_period1=9
+    level, layer1=(1, 0), layer2=(2, 0), spacing=0.1, bar_length=30, bar_period1=9
 ) -> gf.Component:
     '''
 
@@ -1863,3 +1737,407 @@ def add_caliper(
             )
             c.add_ref(t)
     return c
+
+
+class wafer:
+
+    def __init__(self, wafer_diameter, wafer_L, region_size, rows):
+        self.wafer_diameter = wafer_diameter  # 晶圆直径，单位为 mm
+        self.wafer_L = wafer_L  # 晶圆切边，单位为mm
+        self.region_size = region_size  # 每个区域的大小 (width, height)，单位为 um
+        self.rows = rows  # 每行的区域数，例如 [1, 2, 1]
+        self.generate_regions_points()
+        self.judge_points()
+
+    @gf.cell(check_instances=False)  # type:ignore
+    def add_jingyuan(self) -> gf.Component:
+        '''
+        添加一个晶圆
+
+        :param D: 晶圆直径[um]
+        :param L: 晶圆长度[um]
+
+        :return: 返回一个包含晶圆的GDSFactory组件对象
+        '''
+        c1 = gf.Component()
+
+        R = self.wafer_diameter / 2
+        grid_size = 0.001  # 假设网格单位为 0.001
+        distance = (
+            round((R**2 - (self.wafer_L / 2) ** 2) ** 0.5 / grid_size) * grid_size
+        )
+        angle = (
+            round(2 * np.atan(self.wafer_L / 2 / distance) / np.pi * 180 / grid_size)
+            * grid_size
+        )
+        path0 = gf.Path()
+        path0 += gf.path.arc(radius=R / 2, angle=360 - angle, npoints=1000)
+
+        s0 = gf.Section(width=R, layer=(1, 0), port_names=('o1', 'o2'))
+        x = gf.CrossSection(sections=tuple([s0]))
+        path0_1 = gf.path.extrude(path0, cross_section=x)
+        path0_1_ref = c1.add_ref(path0_1)  # type:ignore
+
+        path0_1_ref.dmove((0, -R / 2))
+        path0_1_ref.drotate(angle=angle / 2, center=(0, 0))
+
+        poles = (
+            np.round(
+                np.array(
+                    [
+                        [0, 0],
+                        [self.wafer_L / 2, -distance],
+                        [-self.wafer_L / 2, -distance],
+                    ]
+                )
+                / grid_size
+            )
+            * grid_size
+        )
+        c1.add_polygon(poles, layer=(1, 0))
+        return c1
+
+    @gf.cell
+    def generate_orientation_marker(self, marker_position, layer):
+        """
+        生成晶向标记版图，基于输入的区域大小、每行的区域数和标记的相对位置。
+        假设晶圆上每个区域大小相同，为每个区域添加晶向标记。
+
+        Args:
+            wafer_diameter (float): 晶圆直径，单位为 um。
+            region_size (list): 每个区域的大小 [width, height]，单位为 um。
+            rows (list): 每行的区域数，例如 [2, 3, 2]。
+            marker_position (list): 标记在每个区域中的相对位置 [x, y]，单位为 um。
+            layer (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
+
+        Returns:
+            gdsfactory.Component: 包含所有晶向标记的 GDS 工件。
+        """
+        # wafer_diameter = 150000  # 晶圆直径，单位为 um
+        layout = gf.Component()
+
+        def create_marker():
+            """创建晶向标记"""
+            marker = gf.Component()
+            # 添加箭头形状
+            marker.add_polygon(
+                np.array([(0, 0), (110, 0), (110, 350), (0, 350)]), layer=layer
+            )  # 下箭头
+            marker.add_polygon(
+                np.array([(165, 0), (-55, 0), (55, -150)]), layer=layer
+            )  # 上箭头
+            return marker
+
+        total_height = len(self.rows) * self.region_size[1]
+        y_offset = -total_height / 2  # 从晶圆中心向下开始
+        for row_index, num_regions in enumerate(self.rows):
+            row_width = num_regions * self.region_size[0]
+            x_start = (-row_width) / 2  # 使区域居中
+
+            for col_index in range(num_regions):
+                x = x_start + col_index * self.region_size[0] + marker_position[0]
+                y = y_offset + marker_position[1]
+
+                # 创建标记并添加到版图
+                marker = create_marker()
+                layout.add_ref(marker).dmove((x, y))
+
+            y_offset += self.region_size[1]
+
+        return layout
+
+    @gf.cell
+    def generate_number_layout(self, number_position, text, layer_text):
+        """
+        生成数字版图，基于输入的区域大小、每行的区域数和数字的相对位置。
+        假设晶圆上每个区域大小相同，为每个左下角产生数字。
+
+        Args:
+            wafer_diameter (float): 晶圆直径，单位为 um。
+            region_size (list): 每个区域的大小 [width, height]，单位为 um。
+            rows (list): 每行的区域数，例如 [2, 3, 2]。从下到上算
+            number_position (list): 数字在每个区域中的相对位置 [x, y]，单位为 um。
+            text (str): 要添加的文本内容。
+            layer_text (tuple): GDS 工件的层信息，格式为 (layer_number, data_type)。
+
+        Returns:
+            gdsfactory.Component: 包含所有数字版图的 GDS 工件。
+        """
+        # wafer_diameter = 150000  # 晶圆直径，单位为 um
+        layout = gf.Component()
+
+        total_height = len(self.rows) * self.region_size[1]
+        y_offset = -total_height / 2  # 从晶圆中心向下开始
+        for row_index, num_regions in enumerate(self.rows):
+            row_width = num_regions * self.region_size[0]
+            x_start = (-row_width) / 2  # 使区域居中
+
+            for col_index in range(num_regions):
+                x = x_start + col_index * self.region_size[0] + number_position[0]
+                y = y_offset + number_position[1]
+
+                # 创建数字并添加到版图
+                number = gf.components.text(
+                    text + ' ' + str((row_index + 1) * 10 + col_index + 1),
+                    size=150,
+                    layer=layer_text,
+                )
+                layout.add_ref(number).dmove((x, y))
+
+            y_offset += self.region_size[1]
+
+        return layout
+
+    def generate_regions_points(self):
+        """
+        根据晶圆划片需求，分辨三种区域并计算交界点的坐标。
+
+        Args:
+            region_size (tuple): 每个区域的大小 (width, height)，单位为 um。
+            rows (list): 每行的区域数，例如 [1, 2, 1]。
+
+        Returns:
+            dict: 包含三种区域交界点的坐标，格式如下：
+                {
+                    "90_degree": [(x1, y1), (x2, y2), ...],
+                    "180_degree": [(x3, y3), (x4, y4), ...],
+                    "270_degree": [(x5, y5), (x6, y6), ...],
+                }
+        """
+        # 计算晶圆中心
+        center_x, center_y = 0, 0  # 假设晶圆中心为 (0, 0)
+        point_set = set()  # 用于存储唯一的交界点坐标
+        # 计算每行的起始 y 坐标
+        total_height = len(self.rows) * self.region_size[1]
+        start_y = -total_height / 2  # 从晶圆中心向下开始
+
+        for row_index, num_regions in enumerate(self.rows):
+            # 计算当前行的 y 坐标
+            row_y = (
+                start_y + row_index * self.region_size[1] + self.region_size[1] / 2
+            )  # 当前行的中心y坐标
+
+            # 计算当前行的总宽度
+            total_width = num_regions * self.region_size[0]
+            start_x = -total_width / 2  # 从晶圆中心向左开始
+
+            for col_index in range(num_regions):
+                # 计算当前区域的中心坐标
+                region_x = (
+                    start_x + col_index * self.region_size[0] + self.region_size[0] / 2
+                )  # 当前列的中心x坐标
+
+                # 获取当前区域的四个顶点
+                top_left = (
+                    region_x - self.region_size[0] / 2,
+                    row_y + self.region_size[1] / 2,
+                )
+                top_right = (
+                    region_x + self.region_size[0] / 2,
+                    row_y + self.region_size[1] / 2,
+                )
+                bottom_left = (
+                    region_x - self.region_size[0] / 2,
+                    row_y - self.region_size[1] / 2,
+                )
+                bottom_right = (
+                    region_x + self.region_size[0] / 2,
+                    row_y - self.region_size[1] / 2,
+                )
+                point_set.add(top_left)
+                point_set.add(top_right)
+                point_set.add(bottom_left)
+                point_set.add(bottom_right)
+
+        self.point_set = point_set  # 保存点集以供后续使用
+        return point_set
+
+    def judge_points(self):
+        """
+        判断点的位置，区分边界点
+        """
+        # 将点存储为集合，方便快速查找
+        point_set = set(self.point_set)
+
+        # 构建邻接表
+        adjacency = {}
+        for p1 in self.point_set:
+            neighbors = set()
+
+            # 检查水平方向的相邻点
+            for p2 in self.point_set:
+                if p1[1] == p2[1] and p1[0] != p2[0]:  # 同一水平线上
+                    # 确保两点之间没有其他点
+                    if all(
+                        (x, p1[1]) not in point_set
+                        for x in range(
+                            int(min(p1[0], p2[0]) + 1), int(max(p1[0], p2[0]))
+                        )
+                    ):
+                        neighbors.add(p2)
+
+            # 检查垂直方向的相邻点
+            for p2 in self.point_set:
+                if p1[0] == p2[0] and p1[1] != p2[1]:  # 同一垂直线上
+                    # 确保两点之间没有其他点
+                    if all(
+                        (p1[0], y) not in point_set
+                        for y in range(
+                            int(min(p1[1], p2[1]) + 1), int(max(p1[1], p2[1]))
+                        )
+                    ):
+                        neighbors.add(p2)
+
+            adjacency[p1] = neighbors
+
+        # 找出仅与两个点相连的点
+        two_connected_points = [
+            point for point, neighbors in adjacency.items() if len(neighbors) == 2
+        ]
+        three_connected_points = [
+            point for point, neighbors in adjacency.items() if len(neighbors) == 3
+        ]
+        two_result = []
+        for point in two_connected_points:
+            neighbors = list(adjacency[point])  # 将邻居转换为列表
+            point_dir = str()
+            # 遍历邻居，找到两个点在同一水平或垂直线上的情况
+            for i in range(len(neighbors)):
+                for j in range(i + 1, len(neighbors)):
+                    neighbor1 = neighbors[i]
+                    neighbor2 = neighbors[j]
+                    point_x = [neighbor1[0], neighbor2[0]]
+                    point_y = [neighbor1[1], neighbor2[1]]
+                    if any(x < point[0] for x in point_x) and any(
+                        y < point[1] for y in point_y
+                    ):
+                        point_dir = 'left-down'
+                    elif any(x < point[0] for x in point_x) and any(
+                        y > point[1] for y in point_y
+                    ):
+                        point_dir = 'left-up'
+                    elif any(x > point[0] for x in point_x) and any(
+                        y < point[1] for y in point_y
+                    ):
+                        point_dir = 'right-down'
+                    elif any(x > point[0] for x in point_x) and any(
+                        y > point[1] for y in point_y
+                    ):
+                        point_dir = 'right-up'
+                    two_result.append((point, point_dir))
+
+        three_result = []
+        for point in three_connected_points:
+            neighbors = list(adjacency[point])  # 将邻居转换为列表
+            point_dir = str()
+
+            # 遍历邻居，找到两个点在同一水平或垂直线上的情况
+            for i in range(len(neighbors)):
+                for j in range(i + 1, len(neighbors)):
+                    neighbor1 = neighbors[i]
+                    neighbor2 = neighbors[j]
+
+                    # 检查是否在同一水平或垂直线上
+                    if neighbor1[1] == neighbor2[1] or neighbor1[0] == neighbor2[0]:
+                        # 找到第三个点
+                        point_special = [
+                            n for n in neighbors if n != neighbor1 and n != neighbor2
+                        ][0]
+                        if point_special[0] > point[0]:
+                            point_dir = 'right'
+                        elif point_special[0] < point[0]:
+                            point_dir = 'left'
+                        elif point_special[1] > point[1]:
+                            point_dir = 'up'
+                        elif point_special[1] < point[1]:
+                            point_dir = 'down'
+                        three_result.append((point, point_dir))
+
+        self.two_result = two_result
+        self.three_result = three_result
+
+        return two_result, three_result
+
+    @staticmethod
+    def single_marker_creater(point, point_dir, layer):
+        '''
+        根据point和point_dir生成单个划片标记
+        '''
+        marker_length = 1000
+        marker_width = 200
+        x = point[0]
+        y = point[1]
+        type1 = ['left-up', 'right-up', 'left-down', 'right-down']
+        type2 = ['left', 'right', 'up', 'down']
+        c1 = gf.Component()
+        if point_dir in type1:
+            marker1 = gf.components.rectangle(
+                size=(marker_length, marker_width), layer=layer, centered=True
+            )
+            marker2 = gf.components.rectangle(
+                size=(marker_width, marker_length), layer=layer, centered=True
+            )
+            marker1_1 = c1.add_ref(marker1)
+            marker2_1 = c1.add_ref(marker2)
+            # 'right-dowm'表示朝向右下角
+            if point_dir == 'right-down':
+                marker1_1.dmove((x + marker_length / 2, y + marker_width / 2))
+                marker2_1.dmove((x - marker_width / 2, y - marker_length / 2))
+            elif point_dir == 'left-down':
+                marker1_1.dmove((x - marker_length / 2, y + marker_width / 2))
+                marker2_1.dmove((x + marker_width / 2, y - marker_length / 2))
+            elif point_dir == 'right-up':
+                marker1_1.dmove((x + marker_length / 2, y - marker_width / 2))
+                marker2_1.dmove((x - marker_width / 2, y + marker_length / 2))
+            elif point_dir == 'left-up':
+                marker1_1.dmove((x - marker_length / 2, y - marker_width / 2))
+                marker2_1.dmove((x + marker_width / 2, y + marker_length / 2))
+        elif point_dir in type2:
+            marker1 = gf.components.rectangle(
+                size=(marker_length, marker_width), layer=layer, centered=True
+            )
+            marker2 = gf.components.rectangle(
+                size=(marker_width, marker_length), layer=layer, centered=True
+            )
+            marker3 = gf.components.rectangle(
+                size=(marker_length, marker_width), layer=layer, centered=True
+            )
+            marker1_1 = c1.add_ref(marker1)
+            marker2_1 = c1.add_ref(marker2)
+            marker3_1 = c1.add_ref(marker3)
+            marker1_1.dmove((x - marker_length / 2 - 100, y))
+            marker2_1.dmove((x, y + marker_length / 2 + 100))
+            marker3_1.dmove((x + marker_length / 2 + 100, y))
+            # 'up'表示朝向上方
+            if point_dir == 'up':
+                pass
+            elif point_dir == 'down':
+                marker1_1.drotate(180, center=(x, y))
+                marker2_1.drotate(180, center=(x, y))
+                marker3_1.drotate(180, center=(x, y))
+            elif point_dir == 'left':
+                marker1_1.drotate(90, center=(x, y))
+                marker2_1.drotate(90, center=(x, y))
+                marker3_1.drotate(90, center=(x, y))
+            elif point_dir == 'right':
+                marker1_1.drotate(-90, center=(x, y))
+                marker2_1.drotate(-90, center=(x, y))
+                marker3_1.drotate(-90, center=(x, y))
+
+        return c1
+
+    def generate_markers(self, layer):
+        '''
+        产生划片标记
+        '''
+        c1 = gf.Component()
+        for point, point_dir in self.two_result:
+            c1 << self.single_marker_creater(
+                point, point_dir, layer=layer
+            )  # type:ignore
+        for point, point_dir in self.three_result:
+            c1 << self.single_marker_creater(
+                point, point_dir, layer=layer
+            )  # type:ignore
+
+        return c1
