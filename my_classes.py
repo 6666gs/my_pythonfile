@@ -147,10 +147,39 @@ class AnalysisTools:
         return np.angle(field)
 
     @staticmethod
+    def dbm_mW(x):
+        '''计算dbm转换为mW'''
+        return 10 ** (x / 10)
+
+    @staticmethod
+    def mW_dbm(x):
+        '''计算mW转换为dbm'''
+        return np.log10(x) * 10
+
+    @staticmethod
+    def db_efficient(x):
+        '''计算db转换为效率'''
+        return 10 ** (x / 10)
+
+    @staticmethod
+    def efficient_db(x):
+        '''计算效率转换为db'''
+        return np.log10(x) * 10
+
+    @staticmethod
     def unitformat(field):
         """将光场最大值归一化"""
         field -= np.max(field)  # 减去最大值以避免除零错误
         return field
+
+    @staticmethod
+    def sidewall_angle(length_bot, length_top, height):
+        return np.atan((height * 2 / (length_bot - length_top))) * 180 / np.pi
+
+    @staticmethod
+    def bot_wg_width(length_top, length_H, sideangle):
+        """计算底部波导宽度"""
+        return length_top + 2 * length_H / np.tan(np.radians(sideangle))
 
     @staticmethod
     def plot_fields(t_values, e_i1, e_o2):

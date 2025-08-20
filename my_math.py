@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sympy as sp
+from matplotlib.figure import Figure
 import os
 import string
 import re
@@ -13,26 +14,6 @@ from typing import Tuple, Union
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['text.usetex'] = False
-
-
-def dbm_mW(x):
-    '''计算dbm转换为mW'''
-    return 10 ** (x / 10)
-
-
-def mW_dbm(x):
-    '''计算mW转换为dbm'''
-    return np.log10(x) * 10
-
-
-def db_efficient(x):
-    '''计算db转换为效率'''
-    return 10 ** (x / 10)
-
-
-def efficient_db(x):
-    '''计算效率转换为db'''
-    return np.log10(x) * 10
 
 
 def excel_read(file_dir, sheet='Sheet1'):
@@ -236,7 +217,7 @@ def read_csv_arrays(prefile, skiprows, readcoll):
 
 def plt_ready(
     n: int = 1, cols: int = 2, figsize=(8, 5)
-) -> Union[Tuple[None, None], Tuple[plt.Figure, np.ndarray]]:
+) -> Union[Tuple[None, None], Tuple[Figure, Union[np.ndarray, list]]]:
     """预先设置好绘图环境
 
     :param n: figure的子图数量

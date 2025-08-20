@@ -1039,7 +1039,7 @@ def add_multi_wg_tlet(
 
 @gf.cell
 def add_bentDC(
-    waveguide_width: float,
+    waveguide_width: float,  # 顶宽
     gap: float,  # 定向耦合器间距，为波导中心间距
     angle: float,
     radius1: float,
@@ -1056,7 +1056,7 @@ def add_bentDC(
     器件采用弯曲设计，可实现紧凑的布局和可调的耦合长度。
 
     Args:
-        waveguide_width (float): 波导宽度，单位为微米
+        waveguide_width (float): 波导顶部宽度，单位为微米
         gap (float): 定向耦合器间距，指波导中心到中心的距离，单位为微米
         angle (float): 弯曲角度，单位为度
         radius1 (float): 上臂弯曲半径，单位为微米
