@@ -929,6 +929,164 @@ def add_1x2MMItree(
     c1.show()
 
 
+def add_2x2DCtree(
+    gap=0.173 + 1,
+    angle=10,
+    radius1=163,
+    x_position=0,
+    y_position=0,
+    layer: tuple = LAYER.WG,
+    num: int = 5,
+    L_basaer: float = 180,
+    W_basaer: float = 60,
+    wg_width: float = 1,
+    gc_pro: gf.Component | None = None,
+    wg_lvbo: float = 0.8,
+    wg_lvbo_length: float = 100,
+):
+    '''
+
+    创建一个1x2 MMI分光器树状网络
+
+    该函数生成一个多级1x2 MMI分光器的树状结构，通过级联多个1x2 MMI分光器
+    和贝塞尔曲线连接，形成1对多输出的分光网络。每个输出端都连接光栅耦合器。
+
+    Args:
+        gap:DC 波导中心间距
+        core_length (float, optional): 每个MMI核心区域的长度，单位为微米。默认值为23.6μm。
+        core_width (float, optional): 每个MMI核心区域的宽度，单位为微米。默认值为5.7μm。
+        separation (float, optional): MMI输出端口之间的中心间距，单位为微米。默认值为3μm。
+        taper_length (float, optional): 每个MMI渐变器的长度，单位为微米。默认值为15μm。
+        taper_width (float, optional): MMI连接处的taper宽度，单位为微米。默认值为1.68μm。
+        layer (tuple, optional): 器件所在的工艺层，格式为(layer, datatype)。默认为LAYER.WG。
+        num (int, optional): MMI分光器的级联层数。默认值为5级。
+        L_basaer (float, optional): 贝塞尔曲线的水平长度，单位为微米。默认值为180μm。
+        W_basaer (float, optional): 贝塞尔曲线的垂直偏移，单位为微米。默认值为60μm。
+        wg_width (float, optional): 连接波导的宽度，单位为微米。默认值为1μm。
+        gc_pro (gf.Component, optional): 光栅耦合器组件对象，如果为None则自动生成。默认为None。
+        当gc_pro为None时，函数会自动创建一个光栅耦合器,下列参数此时有用:
+        wg_lvbo (float, optional): 光栅耦合器连接波导
+        wg_lvbo_length (float, optional): 光栅耦合器连接波导长度，单位为微米。默认值为100μm。
+
+    Returns:
+        None: 函数直接显示生成的器件，不返回组件对象
+
+    Structure:
+        GC ── MMI1 ──┬── Bezier ── MMI2 ──┬── Bezier ── MMI3 ──┬── GC
+                     │                    │                    │
+                     └── Bezier ── GC     └── Bezier ── GC     └── GC
+
+        输入: 1个光栅耦合器
+        输出: 2^num 个光栅耦合器 (级联num级MMI)
+
+    Parameters Detail:
+        - core_length/core_width: 控制每个MMI的尺寸和分光比
+        - separation: 影响MMI输出端口间距
+        - num: 决定最终输出端口数量 (2^num个输出)
+        - L_basaer/W_basaer: 控制级间连接的贝塞尔曲线形状
+        - wg_width: 统一的波导连接宽度
+
+    Note:
+        - 每级MMI都使用相同的几何参数
+        - 贝塞尔曲线提供平滑的级间连接，减少损耗
+        - 自动在每个输出端添加光栅耦合器用于测试
+        - 函数末尾调用c1.show()直接显示器件
+        - 适用于1对多功分器、阵列波导光栅前端等应用
+
+    '''
+
+    c1 = gf.Component()
+    ##############################################################################
+    # 构建mmi_pro，即原本的MMI每个taper后加一个wg_width宽的直波导
+    DC_pro = gf.Component()
+    DC1 = DC_pro << add_bentDC(
+        waveguide_width=wg_width,
+        gap=gap,
+        angle=angle,
+        radius1=radius1,
+        x_position=x_position,
+        y_position=y_position,
+        layer_wg=layer,
+    )
+    DC_pro.add_port(name='o1', port=DC1.ports['o1'])
+    DC_pro.add_port(name='o2', port=DC1.ports['o2'])
+    DC_pro.add_port(name='o3', port=DC1.ports['o3'])
+    DC_pro.add_port(name='o4', port=DC1.ports['o4'])
+    ##############################################################################
+    if gc_pro is None:
+        gc_pro = gf.Component()
+        gc = gc_pro << add_gc_1(wg_width=wg_width, layer=layer)
+        taper_wg_lvbo = gf.components.taper2(
+            length=20, width1=wg_width, width2=wg_lvbo, layer=layer
+        )
+        taper_wg_lvbo_ref1 = gc_pro.add_ref(taper_wg_lvbo)
+        taper_wg_lvbo_ref2 = gc_pro.add_ref(taper_wg_lvbo)
+        taper_wg_lvbo_ref1.connect('o1', gc.ports['o1'])
+        wg1 = gc_pro << add_wg_1(
+            wg_length=wg_lvbo_length, wg_width=wg_lvbo, layer=layer
+        )
+        wg1.connect('o1', taper_wg_lvbo_ref1.ports['o2'])
+        taper_wg_lvbo_ref2.connect('o2', wg1.ports['o2'])
+        gc_pro.add_port(name='o1', port=taper_wg_lvbo_ref2.ports['o1'])
+    ##############################################################################
+    DC1 = c1.add_ref(DC_pro)
+    gc1 = c1.add_ref(gc_pro)
+    # L_basaer = 180
+    # W_basaer = 60
+    section1 = gf.Section(width=wg_width, layer=layer, port_names=('o1', 'o2'))
+    x = gf.CrossSection(sections=tuple([section1]))
+    b1 = gf.components.bezier(
+        control_points=[
+            (0, 0),
+            (L_basaer / 2, 0),
+            (L_basaer / 2, W_basaer),
+            (L_basaer, W_basaer),
+        ],
+        npoints=1000,
+        cross_section=x,
+    )
+    b2 = gf.components.bezier(
+        control_points=[
+            (0, 0),
+            (L_basaer / 2, 0),
+            (L_basaer / 2, -W_basaer),
+            (L_basaer, -W_basaer),
+        ],
+        npoints=1000,
+        cross_section=x,
+    )
+    basaer_1 = c1.add_ref(b2)
+    basaer_2 = c1.add_ref(b1)
+    basaer_3 = c1.add_ref(b1)
+    basaer_4 = c1.add_ref(b2)
+    basaer_1.connect('o1', DC1.ports['o1'])
+    basaer_2.connect('o1', DC1.ports['o2'])
+    basaer_3.connect('o1', DC1.ports['o3'])
+    basaer_4.connect('o1', DC1.ports['o4'])
+    gc1.connect('o1', basaer_1.ports['o2'])
+    gc1 = c1.add_ref(gc_pro)
+    gc1.connect('o1', basaer_2.ports['o2'])
+    gc1 = c1.add_ref(gc_pro)
+    gc1.connect('o1', basaer_4.ports['o2'])
+    # N = N  # 级联的MMI数量
+    for i in range(num - 1):
+        DC1 = c1.add_ref(DC_pro)
+        DC1.connect('o2', basaer_3.ports['o2'])
+        basaer_1 = c1.add_ref(b2)
+        basaer_3 = c1.add_ref(b1)
+        basaer_4 = c1.add_ref(b2)
+        basaer_1.connect('o1', DC1.ports['o1'])
+        basaer_3.connect('o1', DC1.ports['o3'])
+        basaer_4.connect('o1', DC1.ports['o4'])
+        gc1 = c1.add_ref(gc_pro)
+        gc1.connect('o1', basaer_1.ports['o2'])
+        gc1 = c1.add_ref(gc_pro)
+        gc1.connect('o1', basaer_4.ports['o2'])
+    gc1 = c1.add_ref(gc_pro)
+    gc1.connect('o1', basaer_3.ports['o2'])
+    c1.show()
+
+
 @gf.cell
 def add_multi_wg_tlet(
     multi_wg_width: float,

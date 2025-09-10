@@ -453,3 +453,12 @@ def bezier_curve(control_points, num_points=100):
         )
 
     return curve_points
+
+
+def decimal_places(num):
+    from decimal import Decimal
+
+    try:
+        return abs(Decimal(str(float(num))).as_tuple().exponent)  # type:ignore
+    except ValueError:
+        raise TypeError("The input must be a numeric value.")
