@@ -83,10 +83,15 @@ class Ring:
     fre: np.ndarray | None = None  # [THz]
     lamda: np.ndarray | None = None  # [nm]
     type: str = 'unknown'  # 是否有下载端，有则为 'with_drop'，无则为 'no_drop'
-    fit_results: list | None = None
-    lambda_step: float | None = None  # 波长步长
 
-    def __init__(self, variable, file=None, type=None, reference=None):
+    lambda0: np.ndarray | None = None
+    lambda_step: float | None = None  # 波长步长
+    ne: dict | None = None  # 有效折射率数据
+    ng: dict | None = None  # 群折射率数据
+    L: float | None = None  # 微环周长，单位米
+    fsr_mean: float | None = None  # 平均自由光谱范围，单位nm
+
+    def __init__(self, variable):
         '''
         初始化函数。
         Args:
@@ -109,72 +114,76 @@ class Ring:
             )
             return attrs
 
-        if file is not None:
-            if type is None:
-                raise ValueError("请提供type参数，指明是否有下载端。")
-            if os.path.isfile(file):
+        if variable['variable'] is None:
+            if (
+                variable['file'] is None
+                or variable['type'] is None
+                or variable['mode'] is None
+            ):
+                raise ValueError(
+                    "请提供variable或file\mode\type参数，两种方式至少完整提供一个。"
+                )
+            if os.path.isfile(variable['file']):
                 data = pd.read_csv(
-                    file,
+                    variable['file'],
                     encoding="utf-8",
                     skiprows=list(range(0, 15)),
                     usecols=[0, 2],
                     header=None,
                     engine='python',
                 )
-                variable['lamda'] = data[0].values
-                variable['T'] = data[2].values
-                variable['type'] = type
+                self.lamda = data[0].values
+                if variable['mode'] == 'T':
+                    self.T = data[2].values
+                elif variable['mode'] == 'D':
+                    self.D = data[2].values
+                else:
+                    raise ValueError("mode参数错误，仅支持 'T' 或 'D'。")
+                self.type = variable['type']
             else:
-                raise ValueError(f"文件 {file} 不存在，请检查路径。")
+                raise ValueError(f"文件 {variable['file']} 不存在，请检查路径。")
+        elif variable['variable'] is not None:
+            if not isinstance(variable['variable'], dict):
+                raise TypeError("variable参数必须是字典类型。")
+            # 获取所有父类的属性
+            class_attrs = get_all_class_attrs(self.__class__)
+            instance_attrs = set(self.__dict__.keys())
+            keys = instance_attrs | class_attrs  # keys即所有属性
 
-        # 获取所有父类的属性
-        class_attrs = get_all_class_attrs(self.__class__)
-        instance_attrs = set(self.__dict__.keys())
-        keys = instance_attrs | class_attrs  # keys即所有属性
+            # 初始化属性
+            for key in keys:
+                if key in variable['variable']:
+                    setattr(self, key, variable['variable'][key])
 
-        # 初始化属性
-        for key in keys:
-            if key in variable:
-                setattr(self, key, variable[key])
         if self.lamda is not None and self.fre is None:
             self.fre = c / (self.lamda * 1e-9) / 1e12
         elif self.fre is not None and self.lamda is None:
             self.lamda = c / (self.fre * 1e12) * 1e9
 
-        if reference is not None:
+        if variable['reference'] is not None:
             '''
             reference中为参考记录的插损
             将微环的所有数据减去该插损
             '''
-            if os.path.isfile(reference):
+            if os.path.isfile(variable['reference']):
                 ref = {}
                 data = pd.read_csv(
-                    reference,
+                    variable['reference'],
                     encoding="utf-8",
                     skiprows=list(range(0, 15)),
                     usecols=[0, 2],
                     header=None,
                     engine='python',
                 )
-                ref['lamda'] = data[0].values
-                ref['T'] = data[2].values
+                ref_lambda = data[0].values
+                ref_power = data[2].values
                 if self.lamda is not None:
                     start = self.lamda.min()
                     end = self.lamda.max()
                 else:
                     raise ValueError("微环数据不存在波长信息，无法匹配参考数据。")
-                if (
-                    start < ref['lamda'].min()  # type:ignore
-                    or end > ref['lamda'].max()  # type:ignore
-                ):
-                    raise ValueError(
-                        f"参考数据无效：微环数据的波长范围超出参考数据波长的范围。\nRing:{start} - {end} nm, Ref data range: {ref['lamda'].min()} - {ref['lamda'].max()} nm"  # type:ignore
-                    )
-                mask = (ref['lamda'] >= start) & (ref['lamda'] <= end)
-                self.lamda_step = np.mean(np.diff(self.lamda))
-                ref_lambda = ref['lamda'][mask]
-                ref_power = ref['T'][mask]
                 ref_lambda_step = np.mean(np.diff(ref_lambda))
+                self.lamda_step = np.mean(np.diff(self.lamda))
                 if ref_lambda_step != self.lamda_step:
                     f_interp = interp1d(ref_lambda, ref_power, kind='cubic')
                     ref_lambda = np.round(
@@ -182,6 +191,16 @@ class Ring:
                         decimal_places(self.lamda_step),
                     )
                     ref_power = f_interp(ref_lambda)
+
+                if start < ref_lambda.min() or end > ref_lambda.max():
+                    raise ValueError(
+                        f"参考数据无效：微环数据的波长范围超出参考数据波长的范围。\nRing:{start} - {end} nm, Ref data range: {ref_lambda.min()} - {ref_lambda.max()} nm"
+                    )
+                mask = (ref_lambda >= start) & (ref_lambda <= end)
+
+                ref_lambda = ref_lambda[mask]
+                ref_power = ref_power[mask]
+
                 if self.T is not None:
                     self.T = self.T - ref_power
                 if self.D is not None:
@@ -190,9 +209,21 @@ class Ring:
             else:
                 print(f"文件 {reference} 不存在，请检查路径。")
 
-    def cal_fsr(self, fsr_nm_g, range_nm):
+        self.ne = {}
+        data = list(mat73.loadmat(variable['nefile']).values())[0]
+        self.ne['lamda'] = np.round(data['x0'] * 1000, 4)
+        self.ne['ne'] = data['y0']
+
+        self.ng = {}
+        data = list(mat73.loadmat(variable['ngfile']).values())[0]
+        self.ng['lamda'] = np.round(data['x0'] * 1000, 4)
+        self.ng['ng'] = data['y0']
+
+        self.L = variable['L']
+
+    def cal_fsr(self, range_nm=None, display=True):
         '''
-        计算自由光谱范围（FSR），并绘制FSR随波长和频率的变化图。
+        根据透射谱或下载段谱计算自由光谱范围（FSR），并绘制FSR随波长和频率的变化图。
         Args:
             fsr_nm_g: 理论FSR，单位nm
             range_nm: 计算FSR以及最后显示的波长范围，格式为(start, end)，单位nm
@@ -213,46 +244,52 @@ class Ring:
                 if self.D is not None:
                     D = self.D[mask]
 
-            delta_lambda_min = fsr_nm_g  # 单位: nm
+            fsr_theory = (
+                np.mean(self.lamda * 1e-9) ** 2
+                / (self.L * np.mean(self.ng['ng']))
+                * 1e9
+            )  # 理论FSR，单位nm
             step_size = np.mean(np.diff(lamda))
-            distance_pts = int(delta_lambda_min / step_size)
+            distance_pts = int(fsr_theory / step_size)
             if T is not None:
                 peaks, properties = find_peaks(-T, distance=distance_pts, prominence=2)
             elif D is not None:
                 peaks, properties = find_peaks(D, distance=distance_pts, prominence=2)
             lambda_peaks = lamda[peaks]
+            self.fsr_mean = np.mean(np.abs(np.diff(lambda_peaks)))
+            self.lambda0 = lambda_peaks
             fre_peaks = fre[peaks]
             fsr_lambda = np.abs(np.diff(lambda_peaks))
             fsr_fre = np.abs(np.diff(fre_peaks))
+            if display:
+                fig, axes = plt_ready(4, 2, figsize=(8, 6))
+                if fig is not None and axes is not None:
+                    ax1, ax2, ax3, ax4 = axes
+                    ax1.plot(lambda_peaks[:-1], fsr_lambda, 'o-')
+                    ax1.set_xlabel('Wavelength (nm)')
+                    ax1.set_ylabel('FSR (nm)')
+                    ax1.set_title('Free Spectral Range vs Wavelength')
+                    ax1.grid(True)
 
-            fig, axes = plt_ready(4, 2, figsize=(8, 6))
-            if fig is not None and axes is not None:
-                ax1, ax2, ax3, ax4 = axes
-                ax1.plot(lambda_peaks[:-1], fsr_lambda, 'o-')
-                ax1.set_xlabel('Wavelength (nm)')
-                ax1.set_ylabel('FSR (nm)')
-                ax1.set_title('Free Spectral Range vs Wavelength')
-                ax1.grid(True)
+                    ax2.plot(fre_peaks[:-1], fsr_fre, 'o-')
+                    ax2.set_xlabel('Frequency (THz)')
+                    ax2.set_ylabel('FSR (THz)')
+                    ax2.set_title('Free Spectral Range vs Frequency')
+                    ax2.grid(True)
+                    if T is not None:
+                        ax3.plot(lamda, T, label='Transmission Spectrum')
+                        ax3.plot(lambda_peaks, T[peaks], 'ro', label='Resonance Peaks')
 
-                ax2.plot(fre_peaks[:-1], fsr_fre, 'o-')
-                ax2.set_xlabel('Frequency (THz)')
-                ax2.set_ylabel('FSR (THz)')
-                ax2.set_title('Free Spectral Range vs Frequency')
-                ax2.grid(True)
-                if T is not None:
-                    ax3.plot(lamda, T, label='Transmission Spectrum')
-                    ax3.plot(lambda_peaks, T[peaks], 'ro', label='Resonance Peaks')
-
-                    ax4.plot(fre, T, label='Transmission Spectrum')
-                    ax4.plot(fre_peaks, T[peaks], 'ro', label='Resonance Peaks')
-            else:
-                print("Error creating plots.")
+                        ax4.plot(fre, T, label='Transmission Spectrum')
+                        ax4.plot(fre_peaks, T[peaks], 'ro', label='Resonance Peaks')
+                else:
+                    print("Error creating plots.")
         else:
             print("Frequency and wavelength data are required to calculate FSR.")
 
-    def cal_Q(self, delta_lambda_min=0.3, range_nm=0.05, holdon=False, display=True):
+    def cal_Q(self, range_nm=0.05, holdon=False):
         '''
-        根据透过射谱计算Q因子。
+        根据透射谱计算Q因子。
         Args:
             delta_lambda_min: fsr间距，单位nm，用于峰值检测
             range_nm: 拟合窗口范围，单位nm
@@ -281,13 +318,14 @@ class Ring:
                     print("Transmission data (T) is required to calculate Q-factor.")
                     return
                 else:
-                    # delta_lambda_min = 0.3  # 单位: nm
+                    if self.fsr_mean is None:
+                        self.cal_fsr(display=False)
                     step_size = np.mean(np.diff(self.lamda))
-                    distance_pts = int(delta_lambda_min / step_size)
+                    distance_pts = int(self.fsr_mean / step_size)
                     peaks, properties = find_peaks(
                         -self.T, distance=distance_pts, prominence=2
                     )
-                    self.fit_results = []
+                    fit_results = []
 
                     for peak in peaks:
                         # 选取拟合窗口范围
@@ -331,7 +369,7 @@ class Ring:
                                 fsr = (lamda1 - lamda2) / 2
 
                             # 保存结果
-                            self.fit_results.append(
+                            fit_results.append(
                                 {
                                     'lambda0': popt[2],
                                     'gamma': 2 * popt[3],
@@ -346,31 +384,29 @@ class Ring:
 
                             # 可视化拟合结果
                             T_fit = lorentzian(lambda_slice, *popt)
-                            if display:
-                                fig, ax = plt.subplots()
-                                ax.plot(
-                                    lambda_slice,
-                                    T_slice / popt[0],
-                                    'bo',
-                                    label='实验数据',
-                                )
-                                ax.plot(
-                                    lambda_slice,
-                                    T_fit / popt[0],
-                                    'r-',
-                                    label='洛伦兹拟合',
-                                )
-                                ax.grid(True)
-                                figs.append(fig)
+                            fig, ax = plt.subplots()
+                            ax.plot(
+                                lambda_slice,
+                                T_slice / popt[0],
+                                'bo',
+                                label='实验数据',
+                            )
+                            ax.plot(
+                                lambda_slice,
+                                T_fit / popt[0],
+                                'r-',
+                                label='洛伦兹拟合',
+                            )
+                            ax.grid(True)
+                            figs.append(fig)
                         except RuntimeError:
                             print(f'峰 @ {self.lamda[peak]:.2f} nm 拟合失败')
-                    if display:
-                        if holdon is False:
-                            plt.close('all')
-                            del figs
+                    if holdon is False:
+                        plt.close('all')
+                        del figs
 
                     # 处理kappa2, Ql, Qi，去除异常值
-                    kappa2_list = [res["kappa2"] for res in self.fit_results]
+                    kappa2_list = [res["kappa2"] for res in fit_results]  # type:ignore
                     kappa2_list = [
                         kappa2
                         for kappa2 in kappa2_list
@@ -383,7 +419,7 @@ class Ring:
                         np.abs(data - mean) < 5 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
-                    Ql_list = [res["Ql"] for res in self.fit_results]
+                    Ql_list = [res["Ql"] for res in fit_results]  # type:ignore
                     Ql_list = [ql for ql in Ql_list if ql is not np.inf and ql > 0]
                     data = np.array(Ql_list)
                     mean = np.mean(data)
@@ -392,7 +428,7 @@ class Ring:
                         np.abs(data - mean) < 5 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
-                    Qi_list = [res["Qi"] for res in self.fit_results]
+                    Qi_list = [res["Qi"] for res in fit_results]  # type:ignore
                     Qi_list = [qi for qi in Qi_list if qi is not np.inf and qi > 0]
                     data = np.array(Qi_list)
                     mean = np.mean(data)
@@ -400,42 +436,111 @@ class Ring:
                     Qi_filtered = data[
                         np.abs(data - mean) < 5 * std
                     ]  # 只保留在均值±3σ范围内的数据
-                    if display:
-                        fig, axes = plt_ready(3, 2, figsize=(8, 6))
-                        if fig is not None and axes is not None:
-                            ax1, ax2, ax3, ax4 = axes
-                            ax1.hist(
-                                Ql_filtered,
-                                bins=20,
-                                color='mediumseagreen',
-                                edgecolor='black',
-                            )
-                            ax1.set_title('Loaded Q-factor Distribution')
-                            ax1.set_xlabel('Ql')
-                            ax1.set_ylabel('Count')
-                            ax1.grid(True)
 
-                            ax2.hist(
-                                Qi_filtered,
-                                bins=20,
-                                color='steelblue',
-                                edgecolor='black',
-                            )
-                            ax2.set_title('Intrinsic Q-factor Distribution')
-                            ax2.set_xlabel('Qi')
-                            ax2.set_ylabel('Count')
-                            ax2.grid(True)
+                    # 计算损耗参数α
+                    start = self.lamda.min()
+                    end = self.lamda.max()
 
-                            ax3.hist(
-                                kappa2_filtered,
-                                bins=20,
-                                color='coral',
-                                edgecolor='black',
-                            )
-                            ax3.set_title('Coupling Coefficient (kappa^2) Distribution')
-                            ax3.set_xlabel('kappa^2')
-                        else:
-                            print("Error creating plots.")
+                    ref_lambda = self.ne['lamda']
+                    ref_ne = self.ne['ne']
+                    ref_lambda_step = np.mean(np.diff(ref_lambda))
+                    if ref_lambda_step != self.lamda_step:
+                        f_interp = interp1d(ref_lambda, ref_ne, kind='cubic')
+                        ref_lambda = np.round(
+                            np.arange(start, end + 1e-6, self.lamda_step),
+                            decimal_places(self.lamda_step),
+                        )
+                        ref_ne = f_interp(ref_lambda)
+                    if start < ref_lambda.min() or end > ref_lambda.max():
+                        raise ValueError(
+                            f"有效折射率数据无效：微环数据的波长范围超出有效折射率数据波长的范围。\nRing:{start} - {end} nm, ne data range: {ref['lamda'].min()} - {ref['lamda'].max()} nm"
+                        )
+                    mask = (ref_lambda >= start) & (ref_lambda <= end)
+                    ref_lambda = ref_lambda[mask]
+                    ref_ne = ref_lambda[mask]
+                    Qi_list = [res["Qi"] for res in fit_results]  # type:ignore
+                    lamda0_list = [res["lambda0"] for res in fit_results]  # type:ignore
+
+                    alpha_list = []
+                    for Qi, lamda0 in zip(Qi_list, lamda0_list):
+                        n_eff = ref_ne[
+                            np.abs(ref_lambda - lamda0).argmin()
+                        ]  # 有效折射率
+                        lamda0 = lamda0 * 1e-9  # 转换为米
+                        A = np.pi * n_eff * self.L / lamda0
+                        x = Qi / A
+
+                        # 解二次方程 x*y**2 + y - x = 0
+                        a = x
+                        b = 1
+                        c = -x
+
+                        # 求根公式
+                        y1 = (-b + np.sqrt(b**2 - 4 * a * c)) / (2 * a)
+                        y2 = (-b - np.sqrt(b**2 - 4 * a * c)) / (2 * a)
+
+                        # 只取正根
+                        y = y1 if y1 > 0 else y2
+                        alpha = y**2
+                        alpha_1 = -20 * np.log10(alpha) / self.L
+                        alpha_list.append(alpha_1 / 100)
+                    # 筛选
+                    alpha_list = [
+                        alpha
+                        for alpha in alpha_list
+                        if alpha is not np.inf and alpha > 0
+                    ]
+                    data = np.array(alpha_list)
+                    mean = np.mean(data)
+                    std = np.std(data)
+                    alpha_filtered = data[
+                        np.abs(data - mean) < 5 * std
+                    ]  # 只保留在均值±3σ范围内的数据
+
+                    fig, axes = plt_ready(4, 2, figsize=(8, 6))
+                    if fig is not None and axes is not None:
+                        ax1, ax2, ax3, ax4 = axes
+                        ax1.hist(
+                            Ql_filtered,
+                            bins=20,
+                            color='mediumseagreen',
+                            edgecolor='black',
+                        )
+                        ax1.set_title('Loaded Q-factor Distribution')
+                        ax1.set_xlabel('Ql')
+                        ax1.set_ylabel('Count')
+                        ax1.grid(True)
+
+                        ax2.hist(
+                            Qi_filtered,
+                            bins=20,
+                            color='steelblue',
+                            edgecolor='black',
+                        )
+                        ax2.set_title('Intrinsic Q-factor Distribution')
+                        ax2.set_xlabel('Qi')
+                        ax2.set_ylabel('Count')
+                        ax2.grid(True)
+
+                        ax3.hist(
+                            kappa2_filtered,
+                            bins=20,
+                            color='coral',
+                            edgecolor='black',
+                        )
+                        ax3.set_title('Coupling Coefficient (kappa^2) Distribution')
+                        ax3.set_xlabel('kappa^2')
+
+                        ax4.hist(
+                            alpha_filtered,
+                            bins=20,
+                            color='gold',
+                            edgecolor='black',
+                        )
+                        ax4.set_title('Loss Coefficient (alpha) Distribution')
+                        ax4.set_xlabel('alpha db/cm')
+                        ax4.set_ylabel('Count')
+                        ax4.grid(True)
             else:
                 print(
                     "Frequency and wavelength data are required to calculate Q-factor."
@@ -524,7 +629,7 @@ class Ring:
 
     def cal_D(self):
         '''
-        计算色散参数D。
+        根据透射谱或下载谱计算色散参数D。
         '''
         if self.fre is None or self.lamda is None:
             print("Frequency and wavelength data are required to calculate dispersion.")
@@ -535,15 +640,12 @@ class Ring:
 
         assert self.fre is not None and self.lamda is not None and self.T is not None
 
-        if self.fit_results is None:
-            self.cal_Q(holdon=False, display=False)
+        if self.lambda0 is None:
+            self.cal_fsr(holdon=False, display=False)
         else:
             pass
 
-        lamda0_list = np.array(
-            [res["lambda0"] for res in self.fit_results]  # type:ignore
-        )
-        omega0_list = 2 * np.pi * c / (lamda0_list * 1e-9)  # 转换为rad/s
+        omega0_list = 2 * np.pi * c / (self.lambda0 * 1e-9)  # 转换为rad/s
         frequency0_list = omega0_list / (2 * np.pi) / 1e12  # 转换为THz
 
         N = len(omega0_list)
@@ -568,97 +670,3 @@ class Ring:
             ax1.set_xlabel('Mode Number (μ)')
             ax1.set_ylabel('Dint / D1')
             ax1.grid(True)
-
-    def cal_alpha(self, ne_file, L):
-        '''
-        计算损耗参数α。
-        Args:
-            ne_file: 有效折射率数据文件路径，支持.mat格式，通过Lumerical Mode Solutions导出
-            L: 微环周长，单位米
-        '''
-        if self.lamda is None:
-            print("Wavelength data is required to calculate loss.")
-            return
-        if ne_file is None or not os.path.isfile(ne_file):
-            print("Effective index file is required to calculate loss.")
-            return
-
-        ref = {}
-        data = list(mat73.loadmat(ne_file).values())[0]
-        ref['lamda'] = np.round(data['x0'] * 1000, 4)
-        ref['ne'] = data['y0']
-        if self.lamda is not None:
-            start = self.lamda.min()
-            end = self.lamda.max()
-        else:
-            raise ValueError("微环数据不存在波长信息，无法匹配参考数据。")
-        if start < ref['lamda'].min() or end > ref['lamda'].max():
-            raise ValueError(
-                f"有效折射率数据无效：微环数据的波长范围超出有效折射率数据波长的范围。\nRing:{start} - {end} nm, ne data range: {ref['lamda'].min()} - {ref['lamda'].max()} nm"
-            )
-        mask = (ref['lamda'] >= start) & (ref['lamda'] <= end)
-        ref_lambda = ref['lamda'][mask]
-        ref_ne = ref['ne'][mask]
-        ref_lambda_step = np.mean(np.diff(ref_lambda))
-        if ref_lambda_step != self.lamda_step:
-            f_interp = interp1d(ref_lambda, ref_ne, kind='cubic')
-            ref_lambda = np.round(
-                np.arange(start, end + 1e-6, self.lamda_step),
-                decimal_places(self.lamda_step),
-            )
-            ref_ne = f_interp(ref_lambda)
-        if self.fit_results is None:
-            self.cal_Q(holdon=False, display=False)
-        else:
-            pass
-        Qi_list = [res["Qi"] for res in self.fit_results]  # type:ignore
-        lamda0_list = [res["lambda0"] for res in self.fit_results]  # type:ignore
-
-        alpha_list = []
-        for Qi, lamda0 in zip(Qi_list, lamda0_list):
-            n_eff = ref_ne[np.abs(ref_lambda - lamda0).argmin()]  # 有效折射率
-            lamda0 = lamda0 * 1e-9  # 转换为米
-            A = np.pi * n_eff * L / lamda0
-            x = Qi / A
-
-            # 解二次方程 x*y**2 + y - x = 0
-            a = x
-            b = 1
-            c = -x
-
-            # 求根公式
-            y1 = (-b + np.sqrt(b**2 - 4 * a * c)) / (2 * a)
-            y2 = (-b - np.sqrt(b**2 - 4 * a * c)) / (2 * a)
-
-            # 只取正根
-            y = y1 if y1 > 0 else y2
-            alpha = y**2
-            alpha_1 = -20 * np.log10(alpha) / L
-            alpha_list.append(alpha_1 / 100)
-        # 筛选
-        alpha_list = [
-            alpha for alpha in alpha_list if alpha is not np.inf and alpha > 0
-        ]
-        data = np.array(alpha_list)
-        mean = np.mean(data)
-        std = np.std(data)
-        alpha_filtered = data[
-            np.abs(data - mean) < 5 * std
-        ]  # 只保留在均值±3σ范围内的数据
-
-        fig, axes = plt_ready(1, 1, figsize=(8, 6))
-        if fig is not None and axes is not None:
-            (ax1,) = axes
-            ax1.hist(
-                alpha_filtered,
-                bins=20,
-                color='mediumseagreen',
-                edgecolor='black',
-            )
-            ax1.set_title('波导损耗')
-            ax1.set_xlabel('$\\alpha$ (dB/cm)')
-            ax1.set_ylabel('Count')
-            ax1.grid(True)
-
-        else:
-            print("Error creating plots.")
