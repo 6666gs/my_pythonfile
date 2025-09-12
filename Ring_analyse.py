@@ -132,7 +132,7 @@ class Ring:
         1. 直接提供variable字典，包含所有需要的变量。
         2. 提供file、mode、type参数，从文件中读取数据。
         3. 若选择方式1，则file、mode、type应设置为None。反之亦然。
-        另外，还需要提供reference、nefile、ngfile和L参数。**nefile、ngfile、L必须提供**
+        另外，还需要提供reference、nefile、ngfile和L参数。****nefile、ngfile、L必须提供****
         Args:
             variable: 字典，包含初始化所需的变量，需要包括:{'variable', 'file', 'mode', 'type', 'reference', 'nefile', 'ngfile', 'L'}
                 - variable: dict or None, 包含初始化所需的变量
@@ -194,11 +194,11 @@ class Ring:
                     header=None,
                     engine='python',
                 )
-                self.lamda = data[0].values
+                self.lamda = np.array(data[0].values)
                 if variable['mode'] == 'T':
-                    self.T = data[2].values
+                    self.T = np.array(data[2].values)
                 elif variable['mode'] == 'D':
-                    self.D = data[2].values
+                    self.D = np.array(data[2].values)
                 else:
                     raise ValueError("mode参数错误，仅支持 'T' 或 'D'。")
                 self.type = variable['type']
@@ -237,8 +237,8 @@ class Ring:
                     header=None,
                     engine='python',
                 )
-                ref_lambda = data[0].values
-                ref_power = data[2].values
+                ref_lambda = np.array(data[0].values)
+                ref_power = np.array(data[2].values)
                 if self.lamda is not None:
                     start = self.lamda.min()
                     end = self.lamda.max()
@@ -293,6 +293,7 @@ class Ring:
         根据透射谱或下载段谱计算自由光谱范围（FSR），并绘制FSR随波长和频率的变化图。
         Args:
             range_nm: 计算FSR以及最后显示的波长范围，格式为(start, end)，单位nm
+            display: 是否显示FSR随波长和频率的变化图
         '''
 
         if self.fre is not None and self.lamda is not None:
@@ -341,7 +342,7 @@ class Ring:
                 peaks, properties = find_peaks(D, distance=distance_pts, prominence=2)
 
             lambda_peaks = lamda[peaks]
-            self.fsr_mean = np.mean(np.abs(np.diff(lambda_peaks)))
+            self.fsr_mean = float(np.mean(np.abs(np.diff(lambda_peaks))))
             self.lambda0 = lambda_peaks
             fre_peaks = fre[peaks]
             fsr_lambda = np.abs(np.diff(lambda_peaks))
@@ -422,10 +423,7 @@ class Ring:
         '''
         根据透射谱计算Q因子。
         Args:
-            delta_lambda_min: fsr间距，单位nm，用于峰值检测
-            range_nm: 拟合窗口范围，单位nm
             holdon: 是否保留每个峰的拟合图像
-            display: 是否显示结果图像
         '''
 
         def lorentzian(lambda_, T0, A, lambda0, gamma):
@@ -776,26 +774,32 @@ class Ring:
             print("Resonant wavelength (lambda0) is required to calculate dispersion.")
             return
         else:
-            omega0_list = 2 * np.pi * c / (self.lambda0 * 1e-9)  # 转换为rad/s
-            frequency0_list = omega0_list / (2 * np.pi) / 1e12  # 转换为THz
+            omega0_array = 2 * np.pi * c / (self.lambda0 * 1e-9)  # 转换为rad/s
+            omega0_array = np.flip(omega0_array)
+            frequency0_array = omega0_array / (2 * np.pi) / 1e12  # 转换为THz
 
-            N = len(omega0_list)
+            N = len(omega0_array)
             mu_array = np.arange(-(N // 2), N // 2 + (N % 2))
 
             # 拟合 ωμ = ω0 + D1μ + ½ D2μ² + ⅙ D3μ³
-            coeffs = np.polyfit(mu_array, omega0_list, 3)
+            coeffs = np.polyfit(mu_array, omega0_array, 3)
             omega_fit = np.polyval(coeffs, mu_array)
             omega0 = coeffs[3]
             D1 = coeffs[2]
+            D2 = 2 * coeffs[1]
+            ng = np.mean(self.ng['ng'])
+            beta = -D2 * ng / c / D1**2
             print(f'D1 = {D1 / (2 * np.pi * 1e9)} GHz ')
+            print(f'D2 = {D2/(2 * np.pi * 1e6)} MHz')
+            print(f'β2 = {beta} s^2/m')
 
-            Dint_array = omega0_list - (omega0 + D1 * mu_array)
+            Dint_array = omega0_array - (omega0 + D1 * mu_array)
             Dint = Dint_array / D1
 
             fig, axes = plt_ready(1, 1, figsize=(8, 6))
             if fig is not None and axes is not None:
                 (ax1,) = axes
-                ax1.plot(frequency0_list, Dint, 'o-')
+                ax1.plot(frequency0_array, Dint, 'o-')
                 ax1.axhline(0, color='gray', linestyle='--', linewidth=0.8)
                 ax1.set_title('Integrated Dispersion')
                 ax1.set_xlabel('Mode Number (μ)')
