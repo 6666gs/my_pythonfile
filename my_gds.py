@@ -1907,7 +1907,6 @@ class wafer:
         self.generate_regions_points()
         self.judge_points()
 
-    @gf.cell(check_instances=False)  # type:ignore
     def add_jingyuan(self) -> gf.Component:
         '''
         添加一个晶圆
@@ -1955,7 +1954,6 @@ class wafer:
         c1.add_polygon(poles, layer=(1, 0))
         return c1
 
-    @gf.cell
     def generate_orientation_marker(self, marker_position, layer):
         """
         生成晶向标记版图，基于输入的区域大小、每行的区域数和标记的相对位置。
@@ -2004,7 +2002,6 @@ class wafer:
 
         return layout
 
-    @gf.cell
     def generate_number_layout(self, number_position, text, layer_text):
         """
         生成数字版图，基于输入的区域大小、每行的区域数和数字的相对位置。
