@@ -9,7 +9,7 @@
 1. 计算自由光谱范围FSR
 2. 计算Q因子，包括负载Q、本征Q、功率耦合系数、波导损耗
 3. 绘制波长域和频谱域透射谱和下载谱
-4. 计算色散参数D
+4. 计算色散参数D1、D2、beta2、积分色散
 
 ### 示例代码
 
@@ -787,11 +787,11 @@ class Ring:
             omega0 = coeffs[3]
             D1 = coeffs[2]
             D2 = 2 * coeffs[1]
-            ng = np.mean(self.ng['ng'])
-            beta = -D2 * ng / c / D1**2
+            ng = np.mean(self.ng['ng'])  # type:ignore
+            beta2 = -D2 * ng / c / D1**2
             print(f'D1 = {D1 / (2 * np.pi * 1e9)} GHz ')
             print(f'D2 = {D2/(2 * np.pi * 1e6)} MHz')
-            print(f'β2 = {beta} s^2/m')
+            print(f'β2 = {beta2} s^2/m')
 
             Dint_array = omega0_array - (omega0 + D1 * mu_array)
             Dint = Dint_array / D1
