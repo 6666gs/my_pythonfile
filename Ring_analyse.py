@@ -1,15 +1,38 @@
 '''
-Original author: Mozhenwu
-Second author: Wuxiao
-Date: 2025-09-10
-Version:0.1
-    目前，仅支持有下载端的微环数据处理，所含的功能包括：
-    1. 计算Q因子，包括负载Q、本征Q
-    2. 计算功率耦合系数
-    3. 计算色散参数D
-    4. 计算损耗参数α
-    5. 绘制透射谱和下载谱
-    6. 计算自由光谱范围FSR
+## 对微环进行分析的类。
+### Original author: Mozhenwu
+### Second author: Wuxiao
+### Date: 2025-09-12
+### Version:0.1
+
+### 功能
+1. 计算自由光谱范围FSR
+2. 计算Q因子，包括负载Q、本征Q、功率耦合系数、波导损耗
+3. 绘制波长域和频谱域透射谱和下载谱
+4. 计算色散参数D
+
+### 示例代码
+
+import Ring_analyse as Ra
+import my_math as mm
+
+variable = {
+    'variable': None,
+    'file': r"E:\20250902LTliupian\H1\H1_sil_1_zhitong_1545_1555_step0.1pm_range2_source0dbm.csv",
+    'mode': 'T',
+    'type': 'with drop',
+    'reference': r"E:\20250902LTliupian\H0_ref_0_0_1500_1630_step1pm_range2_source0dbm.csv",
+    'nefile': r"E:\LTOIy_ne_400_240_1um.mat",
+    'ngfile': r"E:\LTOIy_ng_400_240_1um.mat",
+    'L': 3000e-6,
+}
+
+Ring1 = Ra.Ring(variable)
+Ring1.cal_Q(holdon=False)
+Ring1.cal_fsr(range_nm=(1530, 1550))
+Ring1.plot_lambda(range_nm=(1548, 1550))
+Ring1.cal_D()
+
 '''
 
 from scipy.constants import c
@@ -93,13 +116,52 @@ class Ring:
 
     def __init__(self, variable):
         '''
-        初始化函数。
+        ### 对微环进行分析的类。
+        ### Original author: Mozhenwu
+        ### Second author: Wuxiao
+        ### Date: 2025-09-12
+        ### Version:0.1
+
+        ### 功能
+        1. 计算自由光谱范围FSR
+        2. 计算Q因子，包括负载Q、本征Q、功率耦合系数、波导损耗
+        3. 绘制波长域和频谱域透射谱和下载谱
+        4. 计算色散参数D
+
+        初始化时，variable可以有两种方式提供数据：
+        1. 直接提供variable字典，包含所有需要的变量。
+        2. 提供file、mode、type参数，从文件中读取数据。
+        3. 若选择方式1，则file、mode、type应设置为None。反之亦然。
+        另外，还需要提供reference、nefile、ngfile和L参数。**nefile、ngfile、L必须提供**
         Args:
-            variable: 字典，包含初始化所需的变量，需要包括:{'fre', 'lamda', 'T', 'D', 'type'}，其中fre和lamda至少需要一个
-            file: 可选，Santec扫谱系统Raw Data保存的CSV文件路径，用于加载数据
-            type: 可选，字符串，指明是否有下载端，有则为 'with drop'，无则为 'without drop'
-            reference: 可选，Santec扫谱系统Raw Data的Reference参考文件路径，用于加载参考数据并进行插损校正
+            variable: 字典，包含初始化所需的变量，需要包括:{'variable', 'file', 'mode', 'type', 'reference', 'nefile', 'ngfile', 'L'}
+                - variable: dict or None, 包含初始化所需的变量
+                - file: str or None, 透射谱或下载谱文件路径
+                - mode: str or None, 'T'表示透射谱，'D'表示下载谱
+                - type: str or None, 'with drop'表示有下载端，'without drop'表示无下载端
+                - reference: str or None, 参考记录文件路径，用于去除系统误差
+                - nefile: str, 有效折射率数据文件路径，从.mat文件中读取，该文件通过lumerical mode solver的频率扫描导出
+                - ngfile: str, 群折射率数据文件路径，从.mat文件中读取，该文件通过lumerical mode solver的频率扫描导出
+                - L: float, 微环周长，单位[米]
         '''
+
+        # 检测输入变量内容是否满足要求
+        def check_variable_keys(variable, required_keys):
+            missing = [k for k in required_keys if k not in variable]
+            if missing:
+                raise ValueError(f"variable缺少以下键: {missing}")
+
+        required_keys = [
+            'variable',
+            'file',
+            'mode',
+            'type',
+            'reference',
+            'nefile',
+            'ngfile',
+            'L',
+        ]
+        check_variable_keys(variable, required_keys)
 
         def get_all_class_attrs(cls):
             attrs = set()
@@ -121,7 +183,7 @@ class Ring:
                 or variable['mode'] is None
             ):
                 raise ValueError(
-                    "请提供variable或file\mode\type参数，两种方式至少完整提供一个。"
+                    r"请提供variable或file\mode\type参数，两种方式至少完整提供一个。"
                 )
             if os.path.isfile(variable['file']):
                 data = pd.read_csv(
@@ -192,9 +254,9 @@ class Ring:
                     )
                     ref_power = f_interp(ref_lambda)
 
-                if start < ref_lambda.min() or end > ref_lambda.max():
+                if start < ref_lambda.min() or end > ref_lambda.max():  # type:ignore
                     raise ValueError(
-                        f"参考数据无效：微环数据的波长范围超出参考数据波长的范围。\nRing:{start} - {end} nm, Ref data range: {ref_lambda.min()} - {ref_lambda.max()} nm"
+                        f"参考数据无效：微环数据的波长范围超出参考数据波长的范围。\nRing:{start} - {end} nm, Ref data range: {ref_lambda.min()} - {ref_lambda.max()} nm"  # type:ignore
                     )
                 mask = (ref_lambda >= start) & (ref_lambda <= end)
 
@@ -207,25 +269,29 @@ class Ring:
                     self.D = self.D - ref_power
 
             else:
-                print(f"文件 {reference} 不存在，请检查路径。")
+                print(f"文件 {variable['reference']} 不存在，请检查路径。")
 
         self.ne = {}
-        data = list(mat73.loadmat(variable['nefile']).values())[0]
-        self.ne['lamda'] = np.round(data['x0'] * 1000, 4)
-        self.ne['ne'] = data['y0']
-
         self.ng = {}
-        data = list(mat73.loadmat(variable['ngfile']).values())[0]
-        self.ng['lamda'] = np.round(data['x0'] * 1000, 4)
-        self.ng['ng'] = data['y0']
+        if variable['nefile'] is None or variable['ngfile'] is None:
+            raise ValueError("请提供有效折射率和群折射率数据文件路径。")
+        else:
+            data = list(mat73.loadmat(variable['nefile']).values())[0]
+            self.ne['lamda'] = np.round(data['x0'] * 1000, 4)
+            self.ne['ne'] = data['y0']
 
-        self.L = variable['L']
+            data = list(mat73.loadmat(variable['ngfile']).values())[0]
+            self.ng['lamda'] = np.round(data['x0'] * 1000, 4)
+            self.ng['ng'] = data['y0']
+        if variable['L'] is None:
+            raise ValueError("请提供微环周长L，单位米。")
+        else:
+            self.L = variable['L']
 
     def cal_fsr(self, range_nm=None, display=True):
         '''
         根据透射谱或下载段谱计算自由光谱范围（FSR），并绘制FSR随波长和频率的变化图。
         Args:
-            fsr_nm_g: 理论FSR，单位nm
             range_nm: 计算FSR以及最后显示的波长范围，格式为(start, end)，单位nm
         '''
 
@@ -243,18 +309,37 @@ class Ring:
                     T = self.T[mask]
                 if self.D is not None:
                     D = self.D[mask]
-
+            assert self.L is not None and self.ng is not None
             fsr_theory = (
                 np.mean(self.lamda * 1e-9) ** 2
                 / (self.L * np.mean(self.ng['ng']))
                 * 1e9
             )  # 理论FSR，单位nm
             step_size = np.mean(np.diff(lamda))
-            distance_pts = int(fsr_theory / step_size)
+            distance_pts = int(fsr_theory * 0.7 / step_size)
             if T is not None:
                 peaks, properties = find_peaks(-T, distance=distance_pts, prominence=2)
+                bandwidths = []
+                for peak in peaks:
+                    max_power = -T[peak]
+                    half_power = max_power - 3
+
+                    # 找到功率下降到3dB以下的频率范围
+                    try:
+                        left_idx = np.max(np.where(-T[:peak] <= half_power)[0])
+                    except:
+                        left_idx = 0
+                    try:
+                        right_idx = np.min(np.where(-T[peak:] <= half_power)[0]) + peak
+                    except:
+                        right_idx = len(-T) - 1
+
+                    bandwidth = lamda[right_idx] - lamda[left_idx]
+                    bandwidths.append(bandwidth)
+                self.T_bandwidths_mean = np.mean(np.array(bandwidths))
             elif D is not None:
                 peaks, properties = find_peaks(D, distance=distance_pts, prominence=2)
+
             lambda_peaks = lamda[peaks]
             self.fsr_mean = np.mean(np.abs(np.diff(lambda_peaks)))
             self.lambda0 = lambda_peaks
@@ -279,15 +364,61 @@ class Ring:
                     if T is not None:
                         ax3.plot(lamda, T, label='Transmission Spectrum')
                         ax3.plot(lambda_peaks, T[peaks], 'ro', label='Resonance Peaks')
+                        ax3.axhline(
+                            np.max(T),
+                            color='gray',
+                            linestyle='--',
+                            label='Max Transmission',
+                        )
+                        ax3.text(
+                            np.max(lamda),  # 横坐标设为右侧
+                            np.max(T),
+                            f'{np.max(T):.2f}',
+                            va='center',
+                            ha='left',
+                            color='gray',
+                            fontsize=12,
+                            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none'),
+                        )
+                        ax3.set_xlabel('Wavelength (nm)')
+                        ax3.set_ylabel('dB')
 
                         ax4.plot(fre, T, label='Transmission Spectrum')
                         ax4.plot(fre_peaks, T[peaks], 'ro', label='Resonance Peaks')
+                        ax4.set_xlabel('Frequency (THz)')
+                        ax4.set_ylabel('dB')
+                        ax4.axhline(
+                            np.max(T),
+                            color='gray',
+                            linestyle='--',
+                            label='Max Transmission',
+                        )
+                        ax4.text(
+                            np.max(fre),  # 横坐标设为右侧
+                            np.max(T),
+                            f'{np.max(T):.2f}',
+                            va='center',
+                            ha='left',
+                            color='gray',
+                            fontsize=12,
+                            bbox=dict(facecolor='white', alpha=0.6, edgecolor='none'),
+                        )
+                    elif D is not None:
+                        ax3.plot(lamda, D, label='Dispersion Spectrum')
+                        ax3.plot(lambda_peaks, D[peaks], 'ro', label='Resonance Peaks')
+                        ax3.set_xlabel('Wavelength (nm)')
+                        ax3.set_ylabel('dB')
+
+                        ax4.plot(fre, D, label='Dispersion Spectrum')
+                        ax4.plot(fre_peaks, D[peaks], 'ro', label='Resonance Peaks')
+                        ax4.set_xlabel('Frequency (THz)')
+                        ax4.set_ylabel('dB')
                 else:
                     print("Error creating plots.")
         else:
             print("Frequency and wavelength data are required to calculate FSR.")
 
-    def cal_Q(self, range_nm=0.05, holdon=False):
+    def cal_Q(self, holdon=False):
         '''
         根据透射谱计算Q因子。
         Args:
@@ -320,13 +451,14 @@ class Ring:
                 else:
                     if self.fsr_mean is None:
                         self.cal_fsr(display=False)
+                    assert self.fsr_mean is not None
                     step_size = np.mean(np.diff(self.lamda))
-                    distance_pts = int(self.fsr_mean / step_size)
+                    distance_pts = int(self.fsr_mean * 0.7 / step_size)
                     peaks, properties = find_peaks(
                         -self.T, distance=distance_pts, prominence=2
                     )
                     fit_results = []
-
+                    range_nm = self.T_bandwidths_mean * 2
                     for peak in peaks:
                         # 选取拟合窗口范围
                         lambda0_guess = self.lamda[peak]
@@ -410,13 +542,13 @@ class Ring:
                     kappa2_list = [
                         kappa2
                         for kappa2 in kappa2_list
-                        if kappa2 is not np.inf and kappa2 > 0
+                        if kappa2 is not np.inf and kappa2 > 0 and kappa2 < 1
                     ]
                     data = np.array(kappa2_list)
                     mean = np.mean(data)
                     std = np.std(data)
                     kappa2_filtered = data[
-                        np.abs(data - mean) < 5 * std
+                        np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
                     Ql_list = [res["Ql"] for res in fit_results]  # type:ignore
@@ -425,7 +557,7 @@ class Ring:
                     mean = np.mean(data)
                     std = np.std(data)
                     Ql_filtered = data[
-                        np.abs(data - mean) < 5 * std
+                        np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
                     Qi_list = [res["Qi"] for res in fit_results]  # type:ignore
@@ -434,13 +566,14 @@ class Ring:
                     mean = np.mean(data)
                     std = np.std(data)
                     Qi_filtered = data[
-                        np.abs(data - mean) < 5 * std
+                        np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
                     # 计算损耗参数α
                     start = self.lamda.min()
                     end = self.lamda.max()
 
+                    assert self.ne is not None
                     ref_lambda = self.ne['lamda']
                     ref_ne = self.ne['ne']
                     ref_lambda_step = np.mean(np.diff(ref_lambda))
@@ -453,11 +586,11 @@ class Ring:
                         ref_ne = f_interp(ref_lambda)
                     if start < ref_lambda.min() or end > ref_lambda.max():
                         raise ValueError(
-                            f"有效折射率数据无效：微环数据的波长范围超出有效折射率数据波长的范围。\nRing:{start} - {end} nm, ne data range: {ref['lamda'].min()} - {ref['lamda'].max()} nm"
+                            f"有效折射率数据无效：微环数据的波长范围超出有效折射率数据波长的范围。\nRing:{start} - {end} nm, ne data range: {ref_lambda.min()} - {ref_lambda.max()} nm"
                         )
                     mask = (ref_lambda >= start) & (ref_lambda <= end)
                     ref_lambda = ref_lambda[mask]
-                    ref_ne = ref_lambda[mask]
+                    ref_ne = ref_ne[mask]
                     Qi_list = [res["Qi"] for res in fit_results]  # type:ignore
                     lamda0_list = [res["lambda0"] for res in fit_results]  # type:ignore
 
@@ -576,7 +709,6 @@ class Ring:
                 return
             fig, axes = plt_ready(n, n, figsize=(8, 5))
             if fig is not None and axes is not None:
-                axes = axes if isinstance(axes, (list, np.ndarray)) else [axes]
                 for i, (title, x, y, color) in enumerate(plot_data):
                     ax = axes[i]
                     ax.plot(x, y, label=title, color=color)
@@ -617,7 +749,6 @@ class Ring:
                 return
             fig, axes = plt_ready(n, n, figsize=(8, 5))
             if fig is not None and axes is not None:
-                axes = axes if isinstance(axes, (list, np.ndarray)) else [axes]
                 for i, (title, x, y, color) in enumerate(plot_data):
                     ax = axes[i]
                     ax.plot(x, y, label=title, color=color)
@@ -640,33 +771,33 @@ class Ring:
 
         assert self.fre is not None and self.lamda is not None and self.T is not None
 
+        self.cal_fsr(display=False)
         if self.lambda0 is None:
-            self.cal_fsr(holdon=False, display=False)
+            print("Resonant wavelength (lambda0) is required to calculate dispersion.")
+            return
         else:
-            pass
+            omega0_list = 2 * np.pi * c / (self.lambda0 * 1e-9)  # 转换为rad/s
+            frequency0_list = omega0_list / (2 * np.pi) / 1e12  # 转换为THz
 
-        omega0_list = 2 * np.pi * c / (self.lambda0 * 1e-9)  # 转换为rad/s
-        frequency0_list = omega0_list / (2 * np.pi) / 1e12  # 转换为THz
+            N = len(omega0_list)
+            mu_array = np.arange(-(N // 2), N // 2 + (N % 2))
 
-        N = len(omega0_list)
-        mu_array = np.arange(-(N // 2), N // 2 + (N % 2))
+            # 拟合 ωμ = ω0 + D1μ + ½ D2μ² + ⅙ D3μ³
+            coeffs = np.polyfit(mu_array, omega0_list, 3)
+            omega_fit = np.polyval(coeffs, mu_array)
+            omega0 = coeffs[3]
+            D1 = coeffs[2]
+            print(f'D1 = {D1 / (2 * np.pi * 1e9)} GHz ')
 
-        # 拟合 ωμ = ω0 + D1μ + ½ D2μ² + ⅙ D3μ³
-        coeffs = np.polyfit(mu_array, omega0_list, 3)
-        omega_fit = np.polyval(coeffs, mu_array)
-        omega0 = coeffs[3]
-        D1 = coeffs[2]
-        print(f'D1 = {D1 / (2 * np.pi * 1e9)} GHz ')
+            Dint_array = omega0_list - (omega0 + D1 * mu_array)
+            Dint = Dint_array / D1
 
-        Dint_array = omega0_list - (omega0 + D1 * mu_array)
-        Dint = Dint_array / D1
-
-        fig, axes = plt_ready(1, 1, figsize=(8, 6))
-        if fig is not None and axes is not None:
-            (ax1,) = axes
-            ax1.plot(frequency0_list, Dint, 'o-')
-            ax1.axhline(0, color='gray', linestyle='--', linewidth=0.8)
-            ax1.set_title('Integrated Dispersion')
-            ax1.set_xlabel('Mode Number (μ)')
-            ax1.set_ylabel('Dint / D1')
-            ax1.grid(True)
+            fig, axes = plt_ready(1, 1, figsize=(8, 6))
+            if fig is not None and axes is not None:
+                (ax1,) = axes
+                ax1.plot(frequency0_list, Dint, 'o-')
+                ax1.axhline(0, color='gray', linestyle='--', linewidth=0.8)
+                ax1.set_title('Integrated Dispersion')
+                ax1.set_xlabel('Mode Number (μ)')
+                ax1.set_ylabel('Dint / D1')
+                ax1.grid(True)
