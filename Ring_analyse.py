@@ -414,6 +414,7 @@ class Ring:
                         ax4.plot(fre_peaks, D[peaks], 'ro', label='Resonance Peaks')
                         ax4.set_xlabel('Frequency (THz)')
                         ax4.set_ylabel('dB')
+                    plt.show()
                 else:
                     print("Error creating plots.")
         else:
@@ -672,6 +673,7 @@ class Ring:
                         ax4.set_xlabel('alpha db/cm')
                         ax4.set_ylabel('Count')
                         ax4.grid(True)
+                        plt.show()
             else:
                 print(
                     "Frequency and wavelength data are required to calculate Q-factor."
@@ -715,6 +717,7 @@ class Ring:
                     ax.set_title(title)
                     ax.grid(True)
                     ax.legend()
+                plt.show()
 
     def plot_fre(self, range_THz):
         '''
@@ -755,6 +758,7 @@ class Ring:
                     ax.set_title(title)
                     ax.grid(True)
                     ax.legend()
+                plt.show()
 
     def cal_D(self):
         '''
@@ -805,3 +809,4 @@ class Ring:
                 ax1.set_xlabel('Mode Number (μ)')
                 ax1.set_ylabel('Dint / D1')
                 ax1.grid(True)
+                plt.show()
