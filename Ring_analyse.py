@@ -46,6 +46,7 @@ import matplotlib.pyplot as plt
 import mat73
 from typing import Tuple, Union
 from matplotlib.figure import Figure
+from scipy.stats import truncnorm, norm, lognorm
 
 
 def plt_ready(
@@ -537,6 +538,8 @@ class Ring:
                         del figs
 
                     # 处理kappa2, Ql, Qi，去除异常值
+
+                    ## kappa2
                     kappa2_list = [res["kappa2"] for res in fit_results]  # type:ignore
                     kappa2_list = [
                         kappa2
@@ -550,6 +553,19 @@ class Ring:
                         np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
+                    def lognorm_pdf(data):
+                        x = np.linspace(0, data.max(), 100)
+                        params = lognorm.fit(data)
+                        pdf = lognorm.pdf(x, *params)
+                        pdf /= pdf.max()
+                        pdf_peak = params[2] * np.exp(-params[0] ** 2) + params[1]
+                        return x, pdf, pdf_peak
+
+                    kappa2_filtered_x, kappa2_filtered_pdf, kappa2_pdf_peak = (
+                        lognorm_pdf(kappa2_filtered)
+                    )
+
+                    ## QL
                     Ql_list = [res["Ql"] for res in fit_results]  # type:ignore
                     Ql_list = [ql for ql in Ql_list if ql is not np.inf and ql > 0]
                     data = np.array(Ql_list)
@@ -559,6 +575,11 @@ class Ring:
                         np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
+                    Ql_filtered_x, Ql_filtered_pdf, Ql_pdf_peak = lognorm_pdf(
+                        Ql_filtered
+                    )
+
+                    ## Qi
                     Qi_list = [res["Qi"] for res in fit_results]  # type:ignore
                     Qi_list = [qi for qi in Qi_list if qi is not np.inf and qi > 0]
                     data = np.array(Qi_list)
@@ -568,7 +589,11 @@ class Ring:
                         np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
 
-                    # 计算损耗参数α
+                    Qi_filtered_x, Qi_filtered_pdf, Qi_pdf_peak = lognorm_pdf(
+                        Qi_filtered
+                    )
+
+                    ## 计算损耗参数α
                     start = self.lamda.min()
                     end = self.lamda.max()
 
@@ -626,8 +651,12 @@ class Ring:
                     mean = np.mean(data)
                     std = np.std(data)
                     alpha_filtered = data[
-                        np.abs(data - mean) < 5 * std
+                        np.abs(data - mean) < 4 * std
                     ]  # 只保留在均值±3σ范围内的数据
+
+                    alpha_filtered_x, alpha_filtered_pdf, alpha_pdf_peak = lognorm_pdf(
+                        alpha_filtered
+                    )
 
                     fig, axes = plt_ready(4, 2, figsize=(8, 6))
                     if fig is not None and axes is not None:
@@ -637,6 +666,16 @@ class Ring:
                             bins=20,
                             color='mediumseagreen',
                             edgecolor='black',
+                        )
+                        ax1_1 = ax1.twinx()
+                        ax1_1.plot(Ql_filtered_x, Ql_filtered_pdf, 'r-')
+                        ax1_1.axvline(Ql_pdf_peak, color='r', linestyle='--')
+                        ax1_1.text(
+                            Ql_pdf_peak,
+                            1,
+                            f' {Ql_pdf_peak:.2f}',
+                            color='r',
+                            va='bottom',
                         )
                         ax1.set_title('Loaded Q-factor Distribution')
                         ax1.set_xlabel('Ql')
@@ -649,6 +688,20 @@ class Ring:
                             color='steelblue',
                             edgecolor='black',
                         )
+                        ax2_1 = ax2.twinx()
+                        ax2_1.plot(Qi_filtered_x, Qi_filtered_pdf, 'r-')
+                        ax2_1.axvline(
+                            Qi_pdf_peak,
+                            color='r',
+                            linestyle='--',
+                        )
+                        ax2_1.text(
+                            Qi_pdf_peak,
+                            1,
+                            f' {Qi_pdf_peak:.2f}',
+                            color='r',
+                            va='bottom',
+                        )
                         ax2.set_title('Intrinsic Q-factor Distribution')
                         ax2.set_xlabel('Qi')
                         ax2.set_ylabel('Count')
@@ -660,6 +713,20 @@ class Ring:
                             color='coral',
                             edgecolor='black',
                         )
+                        ax3_1 = ax3.twinx()
+                        ax3_1.plot(kappa2_filtered_x, kappa2_filtered_pdf, 'r-')
+                        ax3_1.axvline(
+                            kappa2_pdf_peak,
+                            color='r',
+                            linestyle='--',
+                        )
+                        ax3_1.text(
+                            kappa2_pdf_peak,
+                            1,
+                            f' {kappa2_pdf_peak:.3f}',
+                            color='r',
+                            va='bottom',
+                        )
                         ax3.set_title('Coupling Coefficient (kappa^2) Distribution')
                         ax3.set_xlabel('kappa^2')
 
@@ -668,6 +735,20 @@ class Ring:
                             bins=20,
                             color='gold',
                             edgecolor='black',
+                        )
+                        ax4_1 = ax4.twinx()
+                        ax4_1.plot(alpha_filtered_x, alpha_filtered_pdf, 'r-')
+                        ax4_1.axvline(
+                            alpha_pdf_peak,
+                            color='r',
+                            linestyle='--',
+                        )
+                        ax4_1.text(
+                            alpha_pdf_peak,
+                            1,
+                            f' {alpha_pdf_peak:.2f}',
+                            color='r',
+                            va='bottom',
                         )
                         ax4.set_title('Loss Coefficient (alpha) Distribution')
                         ax4.set_xlabel('alpha db/cm')
